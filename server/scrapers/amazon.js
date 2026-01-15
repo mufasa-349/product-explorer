@@ -36,7 +36,7 @@ async function setDeliveryZip(page, zip) {
 
     const zipInputSelector = '#GLUXZipUpdateInput, input[name="zipCode"], input[id*="Zip"]';
     const applyButtonSelector = '#GLUXZipUpdate, #GLUXZipUpdate-announce, button[data-action="glow"], button[type="submit"]';
-    const continueButtonSelector = '#GLUXConfirmClose, #GLUXConfirmClose-announce, button[data-action="confirm"]';
+    const continueButtonSelector = '#GLUXConfirmClose, #GLUXConfirmClose-announce, [data-action="GLUXConfirmAction"] #GLUXConfirmClose, [data-action="GLUXConfirmAction"] #GLUXConfirmClose-announce, button[data-action="confirm"], button[name="glowDoneButton"], #a-autoid-3-announce';
 
     console.log(`[AMAZON] Zip code input'u bekleniyor...`);
     await page.waitForSelector(zipInputSelector, { timeout: 10000 });
@@ -64,18 +64,44 @@ async function setDeliveryZip(page, zip) {
 
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    console.log(`[AMAZON] Continue butonu kontrol ediliyor...`);
+    console.log(`[AMAZON] Continue/Close adımı deneniyor...`);
+    let closed = false;
     try {
       await page.waitForSelector(continueButtonSelector, { timeout: 6000 });
       const continueBtn = await page.$(continueButtonSelector);
       if (continueBtn) {
         console.log(`[AMAZON] Continue butonu tıklanıyor...`);
         await continueBtn.click();
+        closed = true;
         await new Promise(resolve => setTimeout(resolve, 1500));
       }
     } catch (e) {
-      console.log(`[AMAZON] Continue butonu görünmedi, devam ediliyor...`);
+      console.log(`[AMAZON] Continue butonu görünmedi, alternatif kapanış deneniyor...`);
     }
+
+    if (!closed) {
+      try {
+        const closeSelector = 'button[aria-label="Close"], [data-action="a-popover-close"]';
+        const closeBtn = await page.$(closeSelector);
+        if (closeBtn) {
+          console.log(`[AMAZON] Pop-up X butonu tıklanıyor...`);
+          await closeBtn.click();
+          closed = true;
+          await new Promise(resolve => setTimeout(resolve, 1200));
+        }
+      } catch (e) {
+        // noop
+      }
+    }
+
+    if (!closed) {
+      console.log(`[AMAZON] Pop-up dışına tıklama deneniyor...`);
+      await page.mouse.click(5, 5);
+      await new Promise(resolve => setTimeout(resolve, 1200));
+    }
+
+    console.log(`[AMAZON] Sayfa yenileniyor...`);
+    await page.reload({ waitUntil: 'networkidle2', timeout: 30000 });
 
     console.log(`[AMAZON] Delivery address ayarlama denemesi tamamlandı (${zip})`);
     return true;
@@ -91,7 +117,8 @@ async function searchAmazon(query) {
     console.log(`[AMAZON] Arama başlatılıyor: "${query}"`);
     
     browser = await puppeteer.launch({
-      headless: true,
+      headless: false,
+      slowMo: 120,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
@@ -112,47 +139,7 @@ async function searchAmazon(query) {
     // Delivery address'i ayarla (US zip)
     await setDeliveryZip(page, '90075');
 
-    console.log(`[AMAZON] Sayfa yüklendi, delivery address kontrol ediliyor...`);
-    
-    // Mevcut delivery address'i kontrol et
-    const currentAddress = await page.evaluate(() => {
-      const addressText = document.querySelector('#glow-ingress-line2, #nav-global-location-slot .nav-line-2')?.textContent || '';
-      const zipMatch = addressText.match(/\d{5}/);
-      const isUS = addressText.toLowerCase().includes('united states') || 
-                   addressText.toLowerCase().includes('usa') ||
-                   addressText.toLowerCase().includes('los angeles') ||
-                   zipMatch !== null;
-      return {
-        text: addressText,
-        zip: zipMatch ? zipMatch[0] : null,
-        isUS: isUS
-      };
-    });
-    
-    console.log(`[AMAZON] Mevcut delivery address: "${currentAddress.text}" - Zip: ${currentAddress.zip || 'Bulunamadı'} - US: ${currentAddress.isUS}`);
-    
-    // Delivery address'in güncellendiğini kontrol et
-    const updatedAddress = await page.evaluate(() => {
-      const addressText = document.querySelector('#glow-ingress-line2, #nav-global-location-slot .nav-line-2')?.textContent || '';
-      const zipMatch = addressText.match(/\d{5}/);
-      const isUS = addressText.toLowerCase().includes('united states') || 
-                   addressText.toLowerCase().includes('usa') ||
-                   addressText.toLowerCase().includes('los angeles') ||
-                   zipMatch !== null;
-      return {
-        text: addressText,
-        zip: zipMatch ? zipMatch[0] : null,
-        isUS: isUS
-      };
-    });
-    
-    console.log(`[AMAZON] Delivery address kontrol: "${updatedAddress.text}" - Zip: ${updatedAddress.zip || 'Bulunamadı'} - US: ${updatedAddress.isUS}`);
-    
-    // Eğer hala US değilse, tekrar dene
-    if (!updatedAddress.isUS || updatedAddress.zip !== '90075') {
-      console.log(`[AMAZON] Delivery address hala güncellenmedi, tekrar deneniyor...`);
-      await setDeliveryZip(page, '90075');
-    }
+    console.log(`[AMAZON] Sayfa yüklendi, ürünler çekilmeye başlanıyor...`);
     
     // Ürün elementlerinin yüklenmesini bekle
     try {
@@ -338,7 +325,8 @@ async function searchAmazon(query) {
     
     console.log(`[AMAZON] ${products.length} eşleşen ürün bulundu`);
 
-    await browser.close();
+    // Debug için tarayıcıyı açık bırak
+    // await browser.close();
 
     if (products.length === 0) {
       console.log(`[AMAZON] Ürün bulunamadı`);
@@ -348,9 +336,10 @@ async function searchAmazon(query) {
     console.log(`[AMAZON] Arama tamamlandı, ${products.length} ürün döndürülüyor`);
     return products;
   } catch (error) {
-    if (browser) {
-      await browser.close();
-    }
+    // Debug için tarayıcıyı açık bırak
+    // if (browser) {
+    //   await browser.close();
+    // }
     
     // Erişim engeli kontrolü
     if (error.message.includes('timeout') || error.message.includes('Navigation')) {
