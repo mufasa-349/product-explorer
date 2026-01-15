@@ -178,25 +178,38 @@ async function searchAmazon(query) {
       console.log(`[AMAZON] Arama sorgusu kelimeleri: ${queryWords.join(', ')}`);
 
       productElements.forEach((element, index) => {
-        if (index >= 20) return; // Daha fazla ürün kontrol et
+        if (items.length >= 3) return; // İlk 3 ürünü al
 
         try {
           // Ürün adı - farklı selector'ları dene
-          const titleElement = element.querySelector('h2 a span, h2 span, .s-title-instructions-style span, a.a-link-normal span, h2 a');
-          const title = titleElement ? titleElement.textContent.trim() : '';
+          const brandElement = element.querySelector('[data-cy="title-recipe"] .a-row.a-color-secondary h2 span, h2.a-size-mini span');
+          const rawBrand = brandElement ? brandElement.textContent.trim() : '';
+          const cleanedBrand = rawBrand.replace(/sponsored/gi, '').trim();
+
+          const productTitleElement = element.querySelector('[data-cy="title-recipe"] a.a-link-normal.s-link-style.a-text-normal h2 span, a.a-link-normal.s-link-style.a-text-normal h2 span');
+          let rawTitle = productTitleElement ? productTitleElement.textContent.trim() : '';
+          rawTitle = rawTitle.replace(/sponsored/gi, '').trim();
+
+          const shortTitle = rawTitle.split(' - ')[0].split(' – ')[0].split(' | ')[0].trim();
+          let title = shortTitle || rawTitle;
+          if (cleanedBrand && title && !title.toLowerCase().startsWith(cleanedBrand.toLowerCase())) {
+            title = `${cleanedBrand} ${title}`;
+          }
           
           if (index < 5) {
             console.log(`[AMAZON] Ürün ${index + 1} - Title: "${title.substring(0, 50)}..."`);
           }
 
-          // Ürün adının arama sorgusu ile hafif eşleşmesini kontrol et (en az 1 kelime)
+          // Ürün adının arama sorgusu ile eşleşme skorunu hesapla
+          let matchScore = 0;
+          let matchPercent = 0;
           if (title) {
             const normalizedTitle = title.toLowerCase();
             const normalizedTitleForMatch = normalizedTitle
               .replace(/(\d+)([a-z]+)/gi, '$1 $2')
               .replace(/([a-z]+)(\d+)/gi, '$1 $2');
 
-            const anyWordMatch = queryWords.length === 0 || queryWords.some(word => {
+            const matchedWords = queryWords.filter(word => {
               const wordLower = word.toLowerCase();
               if (normalizedTitle.includes(wordLower)) return true;
               if (normalizedTitleForMatch.includes(wordLower)) return true;
@@ -211,16 +224,15 @@ async function searchAmazon(query) {
               return false;
             });
 
-            if (!anyWordMatch) {
-              if (index < 5) {
-                console.log(`[AMAZON] Ürün ${index + 1} eşleşmedi - Hafif eşleşme yok`);
-              }
-              return;
-            }
+            matchScore = matchedWords.length;
+            matchPercent = queryWords.length > 0
+              ? Math.round((matchedWords.length / queryWords.length) * 100)
+              : 0;
           } else {
             if (index < 5) {
               console.log(`[AMAZON] Ürün ${index + 1} - Title bulunamadı`);
             }
+            return;
           }
 
           // Fiyat - daha fazla selector dene
@@ -274,15 +286,17 @@ async function searchAmazon(query) {
           const imageElement = element.querySelector('.s-image, img');
           const image = imageElement ? (imageElement.getAttribute('src') || imageElement.getAttribute('data-src')) : '';
 
-          if (title && link && items.length < 10) {
+          if (title && link) {
             if (items.length < 3) {
-              console.log(`[AMAZON] Ürün eklendi: "${title.substring(0, 40)}..." - Fiyat: ${price || 'Bulunamadı'}`);
+              console.log(`[AMAZON] Ürün eklendi: "${title.substring(0, 40)}..." - Fiyat: ${price || 'Bulunamadı'} - Eşleşme: ${matchScore}/${queryWords.length} (${matchPercent}%)`);
             }
             items.push({
               title,
               price: price || 'Fiyat bulunamadı',
               link,
-              image
+              image,
+              matchScore,
+              matchPercent
             });
           } else {
             if (index < 5) {

@@ -67,10 +67,23 @@ app.post('/api/search', async (req, res) => {
       }
     });
 
-    // Fiyatına göre sırala (ucuzdan pahalıya)
+    // Önce eşleşme oranına göre sırala, yakınsa daha ucuz olan öne gelsin
     allProducts.sort((a, b) => {
+      const matchA = typeof a.matchPercent === 'number' ? a.matchPercent : 0;
+      const matchB = typeof b.matchPercent === 'number' ? b.matchPercent : 0;
+      const scoreA = typeof a.matchScore === 'number' ? a.matchScore : 0;
+      const scoreB = typeof b.matchScore === 'number' ? b.matchScore : 0;
       const priceA = parseFloat(a.price) || Infinity;
       const priceB = parseFloat(b.price) || Infinity;
+
+      const diff = Math.abs(matchA - matchB);
+      if (diff <= 5) {
+        // Eşleşme oranları yakınsa ucuz olan öne
+        if (priceA !== priceB) return priceA - priceB;
+      }
+
+      if (matchA !== matchB) return matchB - matchA;
+      if (scoreA !== scoreB) return scoreB - scoreA;
       return priceA - priceB;
     });
 
