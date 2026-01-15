@@ -8,6 +8,13 @@ function App() {
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [currencyOverride, setCurrencyOverride] = useState('auto');
+
+  const siteEstimates = {
+    amazon: 25,
+    amazon_ae: 20,
+    ebay: 10
+  };
 
   const handleSiteToggle = (site) => {
     setSelectedSites(prev => 
@@ -48,15 +55,44 @@ function App() {
     }
   };
 
-  const formatPrice = (price, currency) => {
+  const formatPrice = (product) => {
+    if (!product) return { displayPrice: 'Fiyat bulunamadı', displayCurrency: '' };
+    const {
+      price,
+      currency,
+      originalPrice,
+      originalCurrency
+    } = product;
+
     if (!price || price === 'Fiyat bulunamadı') return price;
     const numPrice = parseFloat(price);
     if (isNaN(numPrice)) return price;
-    const normalizedCurrency = (currency || '').toUpperCase();
-    const currencyPrefix = normalizedCurrency === 'USD' || normalizedCurrency === ''
-      ? '$'
-      : normalizedCurrency;
-    return `${currencyPrefix} ${numPrice.toFixed(2)}`;
+
+    let displayPrice = numPrice.toFixed(2);
+    let displayCurrency = (currency || '').toUpperCase();
+
+    if (currencyOverride === 'AED' && originalCurrency === 'AED' && originalPrice) {
+      const originalNum = parseFloat(originalPrice);
+      if (!isNaN(originalNum)) {
+        displayPrice = originalNum.toFixed(2);
+        displayCurrency = 'AED';
+      }
+    } else if (currencyOverride === 'USD' && displayCurrency === 'USD') {
+      displayCurrency = 'USD';
+    } else if (currencyOverride === 'auto') {
+      displayCurrency = displayCurrency || 'USD';
+    }
+
+    const currencyPrefix = displayCurrency === 'USD' ? '$' : displayCurrency;
+    return {
+      displayPrice: `${currencyPrefix} ${displayPrice}`,
+      displayCurrency
+    };
+  };
+
+  const estimateWaitSeconds = (sites) => {
+    if (!sites || sites.length === 0) return 0;
+    return sites.reduce((sum, site) => sum + (siteEstimates[site] || 8), 0);
   };
 
   return (
@@ -82,6 +118,11 @@ function App() {
               {loading ? 'Aranıyor...' : 'Ara'}
             </button>
           </div>
+          {!loading && (
+            <div className="search-estimate">
+              Tahmini bekleme süresi: ~{estimateWaitSeconds(selectedSites)} sn
+            </div>
+          )}
 
           <div className="site-selection">
             <label className="site-checkbox">
@@ -111,6 +152,21 @@ function App() {
               />
               <span>eBay.com</span>
             </label>
+          </div>
+          <div className="site-selection">
+            <label className="site-checkbox">
+              <span>Para birimi:</span>
+            </label>
+            <select
+              value={currencyOverride}
+              onChange={(e) => setCurrencyOverride(e.target.value)}
+              disabled={loading}
+              className="currency-select"
+            >
+              <option value="auto">Otomatik</option>
+              <option value="USD">USD ($)</option>
+              <option value="AED">AED</option>
+            </select>
           </div>
         </form>
 
@@ -144,7 +200,15 @@ function App() {
                               ? 'Amazon.ae'
                               : 'eBay.com'}
                         </span>
-                        <span className="product-price">{formatPrice(product.price, product.currency)}</span>
+                        {(() => {
+                          const priceInfo = formatPrice(product);
+                          return (
+                            <>
+                              <span className="product-price">{priceInfo.displayPrice}</span>
+                              <span className="product-currency">{priceInfo.displayCurrency}</span>
+                            </>
+                          );
+                        })()}
                       </div>
                       <a 
                         href={product.link} 
