@@ -85,7 +85,12 @@ app.post('/api/search', async (req, res) => {
       }
     });
 
-    // Önce eşleşme oranına göre sırala, yakınsa daha ucuz olan öne gelsin
+    // Önce marka eşleşmesi, sonra kapasite/ifade eşleşmesi, yakınsa ucuz olan öne gelsin
+    const normalizedQuery = (query || '').toLowerCase().trim().replace(/\s+/g, ' ');
+    const brandToken = normalizedQuery ? normalizedQuery.split(' ')[0] : null;
+    const capacityMatch = normalizedQuery.match(/(\d+)\s*tb/);
+    const capacityToken = capacityMatch ? `${capacityMatch[1]}tb` : null;
+
     allProducts.sort((a, b) => {
       const matchA = typeof a.matchPercent === 'number' ? a.matchPercent : 0;
       const matchB = typeof b.matchPercent === 'number' ? b.matchPercent : 0;
@@ -94,10 +99,31 @@ app.post('/api/search', async (req, res) => {
       const priceA = parseFloat(a.price) || Infinity;
       const priceB = parseFloat(b.price) || Infinity;
 
+      const titleA = (a.title || '').toLowerCase().replace(/\s+/g, ' ');
+      const titleB = (b.title || '').toLowerCase().replace(/\s+/g, ' ');
+      const titleANormalized = titleA.replace(/\s+/g, '');
+      const titleBNormalized = titleB.replace(/\s+/g, '');
+
+      const brandMatchA = brandToken ? titleA.startsWith(brandToken) || titleA.includes(`${brandToken} `) : false;
+      const brandMatchB = brandToken ? titleB.startsWith(brandToken) || titleB.includes(`${brandToken} `) : false;
+
+      const exactPhraseA = normalizedQuery && titleA.includes(normalizedQuery);
+      const exactPhraseB = normalizedQuery && titleB.includes(normalizedQuery);
+
+      const capacityMatchA = capacityToken
+        ? (titleANormalized.includes(capacityToken) || titleA.includes(capacityToken.replace('tb', ' tb')))
+        : false;
+      const capacityMatchB = capacityToken
+        ? (titleBNormalized.includes(capacityToken) || titleB.includes(capacityToken.replace('tb', ' tb')))
+        : false;
+
+      if (brandMatchA !== brandMatchB) return brandMatchA ? -1 : 1;
+      if (capacityMatchA !== capacityMatchB) return capacityMatchA ? -1 : 1;
+      if (exactPhraseA !== exactPhraseB) return exactPhraseA ? -1 : 1;
+
       const diff = Math.abs(matchA - matchB);
-      if (diff <= 5) {
-        // Eşleşme oranları yakınsa ucuz olan öne
-        if (priceA !== priceB) return priceA - priceB;
+      if (diff <= 5 && priceA !== priceB) {
+        return priceA - priceB;
       }
 
       if (matchA !== matchB) return matchB - matchA;
