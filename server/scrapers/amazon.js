@@ -1,5 +1,90 @@
 const puppeteer = require('puppeteer');
 
+async function setDeliveryZip(page, zip) {
+  try {
+    console.log(`[AMAZON] Delivery address butonu aranıyor...`);
+    const locationSelectors = [
+      '#nav-global-location-popover-link',
+      '#nav-global-location-slot',
+      '#glow-ingress-line2',
+      '[data-csa-c-content-id="nav_cs_ap"]',
+      'input[data-action-type="SELECT_LOCATION"]'
+    ];
+    let clicked = false;
+
+    for (const selector of locationSelectors) {
+      try {
+        await page.waitForSelector(selector, { timeout: 8000, visible: true });
+      } catch (e) {
+        // Bu selector görünür değilse sıradakini dene
+      }
+      const el = await page.$(selector);
+      if (el) {
+        console.log(`[AMAZON] Delivery address butonu tıklanıyor: ${selector}`);
+        await el.click();
+        clicked = true;
+        break;
+      }
+    }
+
+    if (!clicked) {
+      console.log(`[AMAZON] Delivery address butonu bulunamadı`);
+      return false;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    const zipInputSelector = '#GLUXZipUpdateInput, input[name="zipCode"], input[id*="Zip"]';
+    const applyButtonSelector = '#GLUXZipUpdate, #GLUXZipUpdate-announce, button[data-action="glow"], button[type="submit"]';
+    const continueButtonSelector = '#GLUXConfirmClose, #GLUXConfirmClose-announce, button[data-action="confirm"]';
+
+    console.log(`[AMAZON] Zip code input'u bekleniyor...`);
+    await page.waitForSelector(zipInputSelector, { timeout: 10000 });
+    const zipInput = await page.$(zipInputSelector);
+
+    if (!zipInput) {
+      console.log(`[AMAZON] Zip input bulunamadı`);
+      return false;
+    }
+
+    console.log(`[AMAZON] Zip code input'una ${zip} giriliyor...`);
+    await zipInput.click({ clickCount: 3 });
+    await page.keyboard.press('Backspace');
+    await zipInput.type(zip, { delay: 80 });
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    console.log(`[AMAZON] Apply butonu tıklanıyor...`);
+    const applyBtn = await page.$(applyButtonSelector);
+    if (applyBtn) {
+      await applyBtn.click();
+    } else {
+      console.log(`[AMAZON] Apply butonu bulunamadı`);
+      return false;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    console.log(`[AMAZON] Continue butonu kontrol ediliyor...`);
+    try {
+      await page.waitForSelector(continueButtonSelector, { timeout: 6000 });
+      const continueBtn = await page.$(continueButtonSelector);
+      if (continueBtn) {
+        console.log(`[AMAZON] Continue butonu tıklanıyor...`);
+        await continueBtn.click();
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
+    } catch (e) {
+      console.log(`[AMAZON] Continue butonu görünmedi, devam ediliyor...`);
+    }
+
+    console.log(`[AMAZON] Delivery address ayarlama denemesi tamamlandı (${zip})`);
+    return true;
+  } catch (e) {
+    console.log(`[AMAZON] Delivery address ayarlama hatası: ${e.message}`);
+    return false;
+  }
+}
+
 async function searchAmazon(query) {
   let browser;
   try {
@@ -15,37 +100,7 @@ async function searchAmazon(query) {
     // User-Agent ayarla (bot olarak algılanmamak için)
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
     
-    // Önce ana sayfaya git
-    console.log(`[AMAZON] Ana sayfaya gidiliyor...`);
-    await page.goto('https://www.amazon.com', {
-      waitUntil: 'networkidle2',
-      timeout: 30000
-    });
-    
-    // Delivery address'i ayarla
-    try {
-      console.log(`[AMAZON] Delivery address butonu tıklanıyor...`);
-      await page.waitForSelector('#nav-global-location-popover-link', { timeout: 10000 });
-      await page.click('#nav-global-location-popover-link');
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      console.log(`[AMAZON] Zip code input'una 90075 giriliyor...`);
-      await page.waitForSelector('#GLUXZipUpdateInput', { timeout: 10000 });
-      await page.click('#GLUXZipUpdateInput', { clickCount: 3 }); // Mevcut değeri seç
-      await page.type('#GLUXZipUpdateInput', '90075');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      console.log(`[AMAZON] Apply butonu tıklanıyor...`);
-      await page.waitForSelector('#GLUXZipUpdate', { timeout: 10000 });
-      await page.click('#GLUXZipUpdate');
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      console.log(`[AMAZON] Delivery address ayarlandı (90075)`);
-    } catch (e) {
-      console.log(`[AMAZON] Delivery address ayarlama hatası: ${e.message}`);
-    }
-    
-    // Arama sayfasına git
+    // Arama sayfasına git (ana sayfaya gitme)
     const searchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(query)}`;
     console.log(`[AMAZON] Arama sayfasına gidiliyor: ${searchUrl}`);
     
@@ -53,6 +108,9 @@ async function searchAmazon(query) {
       waitUntil: 'networkidle2',
       timeout: 30000 
     });
+
+    // Delivery address'i ayarla (US zip)
+    await setDeliveryZip(page, '90075');
 
     console.log(`[AMAZON] Sayfa yüklendi, delivery address kontrol ediliyor...`);
     
@@ -90,65 +148,10 @@ async function searchAmazon(query) {
     
     console.log(`[AMAZON] Delivery address kontrol: "${updatedAddress.text}" - Zip: ${updatedAddress.zip || 'Bulunamadı'} - US: ${updatedAddress.isUS}`);
     
-    // Eğer hala US değilse, delivery address butonuna tıkla
+    // Eğer hala US değilse, tekrar dene
     if (!updatedAddress.isUS || updatedAddress.zip !== '90075') {
       console.log(`[AMAZON] Delivery address hala güncellenmedi, tekrar deneniyor...`);
-      
-      try {
-        const deliveryButton = await page.$('#nav-global-location-slot, #glow-ingress-line2, [data-csa-c-content-id="nav_cs_ap"]');
-        if (deliveryButton) {
-          console.log(`[AMAZON] Delivery address butonu bulundu, tıklanıyor...`);
-          await deliveryButton.click();
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          // Pop-up içindeki elementleri kontrol et
-          const popupInfo = await page.evaluate(() => {
-            const countrySelect = document.querySelector('#GLUXCountryList, select[name="countryCode"], select[id*="Country"]');
-            const zipInput = document.querySelector('#GLUXZipUpdateInput, input[name="zipCode"], input[id*="Zip"]');
-            const applyBtn = document.querySelector('#GLUXZipUpdate-announce, button[data-action="glow"], button[type="submit"]');
-            return {
-              hasCountrySelect: !!countrySelect,
-              hasZipInput: !!zipInput,
-              hasApplyBtn: !!applyBtn
-            };
-          });
-          
-          console.log(`[AMAZON] Pop-up içeriği - Country Select: ${popupInfo.hasCountrySelect}, Zip Input: ${popupInfo.hasZipInput}, Apply Button: ${popupInfo.hasApplyBtn}`);
-          
-          // Ülke seç
-          if (popupInfo.hasCountrySelect) {
-            await page.evaluate(() => {
-              const countrySelect = document.querySelector('#GLUXCountryList, select[name="countryCode"], select[id*="Country"]');
-              if (countrySelect) {
-                countrySelect.value = 'US';
-                countrySelect.dispatchEvent(new Event('change', { bubbles: true }));
-              }
-            });
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
-          
-          // Zip code gir
-          if (popupInfo.hasZipInput) {
-            const zipInput = await page.$('#GLUXZipUpdateInput, input[name="zipCode"], input[id*="Zip"]');
-            if (zipInput) {
-              await zipInput.click({ clickCount: 3 });
-              await zipInput.type('90075', { delay: 100 });
-              await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-          }
-          
-          // Apply butonuna tıkla
-          if (popupInfo.hasApplyBtn) {
-            const applyBtn = await page.$('#GLUXZipUpdate-announce, button[data-action="glow"], button[type="submit"]');
-            if (applyBtn) {
-              await applyBtn.click();
-              await new Promise(resolve => setTimeout(resolve, 3000));
-            }
-          }
-        }
-      } catch (e) {
-        console.log(`[AMAZON] Delivery address güncelleme hatası: ${e.message}`);
-      }
+      await setDeliveryZip(page, '90075');
     }
     
     // Ürün elementlerinin yüklenmesini bekle
