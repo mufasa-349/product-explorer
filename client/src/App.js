@@ -48,11 +48,15 @@ function App() {
     }
   };
 
-  const formatPrice = (price) => {
+  const formatPrice = (price, currency) => {
     if (!price || price === 'Fiyat bulunamadı') return price;
     const numPrice = parseFloat(price);
     if (isNaN(numPrice)) return price;
-    return `$${numPrice.toFixed(2)}`;
+    const normalizedCurrency = (currency || '').toUpperCase();
+    const currencyPrefix = normalizedCurrency === 'USD' || normalizedCurrency === ''
+      ? '$'
+      : normalizedCurrency;
+    return `${currencyPrefix} ${numPrice.toFixed(2)}`;
   };
 
   return (
@@ -92,6 +96,15 @@ function App() {
             <label className="site-checkbox">
               <input
                 type="checkbox"
+                checked={selectedSites.includes('amazon_ae')}
+                onChange={() => handleSiteToggle('amazon_ae')}
+                disabled={loading}
+              />
+              <span>Amazon.ae</span>
+            </label>
+            <label className="site-checkbox">
+              <input
+                type="checkbox"
                 checked={selectedSites.includes('ebay')}
                 onChange={() => handleSiteToggle('ebay')}
                 disabled={loading}
@@ -125,9 +138,13 @@ function App() {
                       <h3 className="product-title">{product.title}</h3>
                       <div className="product-details">
                         <span className="product-site">
-                          {product.site === 'amazon' ? 'Amazon.com' : 'eBay.com'}
+                          {product.site === 'amazon'
+                            ? 'Amazon.com'
+                            : product.site === 'amazon_ae'
+                              ? 'Amazon.ae'
+                              : 'eBay.com'}
                         </span>
-                        <span className="product-price">{formatPrice(product.price)}</span>
+                        <span className="product-price">{formatPrice(product.price, product.currency)}</span>
                       </div>
                       <a 
                         href={product.link} 
@@ -151,7 +168,11 @@ function App() {
               {results.results.map((result, index) => (
                 <div key={index} className="status-item">
                   <span className="status-site">
-                    {result.site === 'amazon' ? 'Amazon.com' : 'eBay.com'}: 
+                    {result.site === 'amazon'
+                      ? 'Amazon.com'
+                      : result.site === 'amazon_ae'
+                        ? 'Amazon.ae'
+                        : 'eBay.com'}: 
                   </span>
                   {result.success ? (
                     <span className="status-success">

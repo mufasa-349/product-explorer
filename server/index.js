@@ -1,10 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 const { searchAmazon } = require('./scrapers/amazon');
+const { searchAmazonAE } = require('./scrapers/amazon-ae');
 const { searchEbay } = require('./scrapers/ebay');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
+const AED_TO_USD_RATE = parseFloat(process.env.AED_TO_USD_RATE) || 0.2723;
 
 // CORS ayarları
 app.use(cors({
@@ -35,6 +37,8 @@ app.post('/api/search', async (req, res) => {
         
         if (site === 'amazon') {
           siteResults = await searchAmazon(query);
+        } else if (site === 'amazon_ae') {
+          siteResults = await searchAmazonAE(query);
         } else if (site === 'ebay') {
           siteResults = await searchEbay(query);
         }
@@ -59,8 +63,22 @@ app.post('/api/search', async (req, res) => {
     results.forEach(result => {
       if (result.success && result.products) {
         result.products.forEach(product => {
+          let normalizedProduct = { ...product };
+          if (product.currency && product.currency.toUpperCase() === 'AED') {
+            const basePrice = parseFloat(product.price);
+            if (!isNaN(basePrice)) {
+              const usdPrice = basePrice * AED_TO_USD_RATE;
+              normalizedProduct = {
+                ...product,
+                price: usdPrice.toFixed(2),
+                currency: 'USD',
+                originalPrice: product.price,
+                originalCurrency: product.currency
+              };
+            }
+          }
           allProducts.push({
-            ...product,
+            ...normalizedProduct,
             site: result.site
           });
         });
