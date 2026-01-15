@@ -189,22 +189,17 @@ async function searchAmazon(query) {
             console.log(`[AMAZON] Ürün ${index + 1} - Title: "${title.substring(0, 50)}..."`);
           }
 
-          // Ürün adının arama sorgusu ile eşleşmesini kontrol et
+          // Ürün adının arama sorgusu ile hafif eşleşmesini kontrol et (en az 1 kelime)
           if (title) {
             const normalizedTitle = title.toLowerCase();
-            // Sayıları normalize et (8tb -> 8 tb, 870 -> 870) - hem yan yana hem ayrı olabilir
             const normalizedTitleForMatch = normalizedTitle
-              .replace(/(\d+)([a-z]+)/gi, '$1 $2')  // 8tb -> 8 tb
-              .replace(/([a-z]+)(\d+)/gi, '$1 $2'); // tb8 -> tb 8
-            
-            // Her kelimeyi kontrol et
-            const allWordsMatch = queryWords.every(word => {
+              .replace(/(\d+)([a-z]+)/gi, '$1 $2')
+              .replace(/([a-z]+)(\d+)/gi, '$1 $2');
+
+            const anyWordMatch = queryWords.length === 0 || queryWords.some(word => {
               const wordLower = word.toLowerCase();
-              // Direkt eşleşme
               if (normalizedTitle.includes(wordLower)) return true;
-              // Normalize edilmiş versiyonda eşleşme
               if (normalizedTitleForMatch.includes(wordLower)) return true;
-              // Sayıları ayrı kontrol et (8tb -> 8 ve tb)
               if (wordLower.match(/^\d+[a-z]+$/)) {
                 const numMatch = wordLower.match(/^(\d+)([a-z]+)$/);
                 if (numMatch) {
@@ -215,29 +210,12 @@ async function searchAmazon(query) {
               }
               return false;
             });
-            
-            if (!allWordsMatch && index < 5) {
-              const missingWords = queryWords.filter(word => {
-                const wordLower = word.toLowerCase();
-                const normalizedTitleForMatch = normalizedTitle
-                  .replace(/(\d+)([a-z]+)/gi, '$1 $2')
-                  .replace(/([a-z]+)(\d+)/gi, '$1 $2');
-                if (wordLower.match(/^\d+[a-z]+$/)) {
-                  const numMatch = wordLower.match(/^(\d+)([a-z]+)$/);
-                  if (numMatch) {
-                    const num = numMatch[1];
-                    const unit = numMatch[2];
-                    return !(normalizedTitle.includes(num) && normalizedTitle.includes(unit));
-                  }
-                }
-                return !normalizedTitle.includes(wordLower) && !normalizedTitleForMatch.includes(wordLower);
-              });
-              console.log(`[AMAZON] Ürün ${index + 1} eşleşmedi - Eksik kelimeler: ${missingWords.join(', ')}`);
-              return; // Eşleşmiyorsa atla
-            }
-            
-            if (!allWordsMatch) {
-              return; // Eşleşmiyorsa atla
+
+            if (!anyWordMatch) {
+              if (index < 5) {
+                console.log(`[AMAZON] Ürün ${index + 1} eşleşmedi - Hafif eşleşme yok`);
+              }
+              return;
             }
           } else {
             if (index < 5) {
@@ -247,19 +225,15 @@ async function searchAmazon(query) {
 
           // Fiyat - daha fazla selector dene
           let price = '';
-          const priceSelectors = [
+          const priceContainer = element.querySelector('[data-cy="price-recipe"]') || element;
+          const primaryPriceSelectors = [
             '.a-price .a-offscreen',
             '.a-price-whole',
-            '.a-price .a-price-symbol + span',
-            'span.a-price',
-            '.a-price',
-            '[data-a-color="price"] .a-offscreen',
-            '.a-price-range .a-offscreen',
-            '.a-price-range .a-price-whole'
+            '.a-price .a-price-symbol + span'
           ];
-          
-          for (const selector of priceSelectors) {
-            const priceElement = element.querySelector(selector);
+
+          for (const selector of primaryPriceSelectors) {
+            const priceElement = priceContainer.querySelector(selector);
             if (priceElement) {
               const priceText = priceElement.textContent || priceElement.getAttribute('aria-label') || priceElement.innerText || '';
               const extractedPrice = priceText.trim().replace(/[^0-9.]/g, '');
@@ -270,10 +244,11 @@ async function searchAmazon(query) {
             }
           }
 
-          // Eğer hala fiyat bulunamadıysa, tüm fiyat elementlerini kontrol et
+          // Eğer hala fiyat bulunamadıysa, ikincil teklif bloklarını hariç tutarak ara
           if (!price) {
             const allPriceElements = element.querySelectorAll('[class*="price"], [data-a-color="price"]');
             for (const priceEl of allPriceElements) {
+              if (priceEl.closest('[data-cy="secondary-offer-recipe"]')) continue;
               const priceText = priceEl.textContent || priceEl.getAttribute('aria-label') || '';
               const extractedPrice = priceText.trim().replace(/[^0-9.]/g, '');
               if (extractedPrice && !isNaN(parseFloat(extractedPrice)) && parseFloat(extractedPrice) > 0) {
