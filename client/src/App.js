@@ -13,6 +13,7 @@ function App() {
   const siteEstimates = {
     amazon: 25,
     amazon_ae: 20,
+    amazon_de: 20,
     ebay: 10
   };
 
@@ -56,7 +57,9 @@ function App() {
   };
 
   const formatPrice = (product) => {
-    if (!product) return { displayPrice: 'Fiyat bulunamadı', displayCurrency: '' };
+    if (!product) {
+      return { displayPrice: 'Fiyat bulunamadı', displayCurrency: '' };
+    }
     const {
       price,
       currency,
@@ -64,7 +67,9 @@ function App() {
       originalCurrency
     } = product;
 
-    if (!price || price === 'Fiyat bulunamadı') return price;
+    if (!price || price === 'Fiyat bulunamadı') {
+      return { displayPrice: 'Fiyat bulunamadı', displayCurrency: '' };
+    }
     const numPrice = parseFloat(price);
     if (isNaN(numPrice)) return price;
 
@@ -76,6 +81,12 @@ function App() {
       if (!isNaN(originalNum)) {
         displayPrice = originalNum.toFixed(2);
         displayCurrency = 'AED';
+      }
+    } else if (currencyOverride === 'EUR' && originalCurrency === 'EUR' && originalPrice) {
+      const originalNum = parseFloat(originalPrice);
+      if (!isNaN(originalNum)) {
+        displayPrice = originalNum.toFixed(2);
+        displayCurrency = 'EUR';
       }
     } else if (currencyOverride === 'USD' && displayCurrency === 'USD') {
       displayCurrency = 'USD';
@@ -146,6 +157,15 @@ function App() {
             <label className="site-checkbox">
               <input
                 type="checkbox"
+                checked={selectedSites.includes('amazon_de')}
+                onChange={() => handleSiteToggle('amazon_de')}
+                disabled={loading}
+              />
+              <span>Amazon.de</span>
+            </label>
+            <label className="site-checkbox">
+              <input
+                type="checkbox"
                 checked={selectedSites.includes('ebay')}
                 onChange={() => handleSiteToggle('ebay')}
                 disabled={loading}
@@ -166,6 +186,7 @@ function App() {
               <option value="auto">Otomatik</option>
               <option value="USD">USD ($)</option>
               <option value="AED">AED</option>
+              <option value="EUR">EUR</option>
             </select>
           </div>
         </form>
@@ -198,7 +219,9 @@ function App() {
                             ? 'Amazon.com'
                             : product.site === 'amazon_ae'
                               ? 'Amazon.ae'
-                              : 'eBay.com'}
+                              : product.site === 'amazon_de'
+                                ? 'Amazon.de'
+                                : 'eBay.com'}
                         </span>
                         {(() => {
                           const priceInfo = formatPrice(product);
@@ -236,7 +259,9 @@ function App() {
                       ? 'Amazon.com'
                       : result.site === 'amazon_ae'
                         ? 'Amazon.ae'
-                        : 'eBay.com'}: 
+                        : result.site === 'amazon_de'
+                          ? 'Amazon.de'
+                          : 'eBay.com'}: 
                   </span>
                   {result.success ? (
                     <span className="status-success">
