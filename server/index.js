@@ -9,6 +9,7 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 const AED_TO_USD_RATE = parseFloat(process.env.AED_TO_USD_RATE) || 0.2723;
 const EUR_TO_USD_RATE = parseFloat(process.env.EUR_TO_USD_RATE) || 1.09;
+const USD_TO_TRY_RATE = parseFloat(process.env.USD_TO_TRY_RATE) || 44.0;
 
 // CORS ayarları
 app.use(cors({
@@ -90,6 +91,20 @@ app.post('/api/search', async (req, res) => {
                 currency: 'USD',
                 originalPrice: product.price,
                 originalCurrency: product.currency
+              };
+            }
+          }
+          if (normalizedProduct.currency && normalizedProduct.currency.toUpperCase() === 'USD') {
+            const usdBase = parseFloat(normalizedProduct.price);
+            if (!isNaN(usdBase)) {
+              const tryPrice = Math.ceil((usdBase * USD_TO_TRY_RATE) / 100) * 100;
+              normalizedProduct = {
+                ...normalizedProduct,
+                price: tryPrice.toFixed(0),
+                currency: 'TRY',
+                originalPrice: normalizedProduct.originalPrice || normalizedProduct.price,
+                originalCurrency: normalizedProduct.originalCurrency || 'USD',
+                usdPrice: usdBase.toFixed(2)
               };
             }
           }

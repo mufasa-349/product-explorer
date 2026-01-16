@@ -245,6 +245,7 @@ async function searchAmazon(query) {
 
           // Fiyat - daha fazla selector dene
           let price = '';
+          let currency = '';
           const priceContainer = element.querySelector('[data-cy="price-recipe"]') || element;
           const primaryPriceSelectors = [
             '.a-price .a-offscreen',
@@ -259,6 +260,7 @@ async function searchAmazon(query) {
               const extractedPrice = priceText.trim().replace(/[^0-9.]/g, '');
               if (extractedPrice && !isNaN(parseFloat(extractedPrice))) {
                 price = extractedPrice;
+                currency = 'USD';
                 break;
               }
             }
@@ -273,6 +275,7 @@ async function searchAmazon(query) {
               const extractedPrice = priceText.trim().replace(/[^0-9.]/g, '');
               if (extractedPrice && !isNaN(parseFloat(extractedPrice)) && parseFloat(extractedPrice) > 0) {
                 price = extractedPrice;
+                currency = 'USD';
                 break;
               }
             }
@@ -301,6 +304,7 @@ async function searchAmazon(query) {
             const product = {
               title,
               price: price || 'Fiyat bulunamadı',
+              currency: currency || 'USD',
               link,
               image,
               matchScore,

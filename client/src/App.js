@@ -64,7 +64,8 @@ function App() {
       price,
       currency,
       originalPrice,
-      originalCurrency
+      originalCurrency,
+      usdPrice
     } = product;
 
     if (!price || price === 'Fiyat bulunamadı') {
@@ -87,6 +88,12 @@ function App() {
       if (!isNaN(originalNum)) {
         displayPrice = originalNum.toFixed(2);
         displayCurrency = 'EUR';
+      }
+    } else if (currencyOverride === 'USD' && usdPrice) {
+      const usdNum = parseFloat(usdPrice);
+      if (!isNaN(usdNum)) {
+        displayPrice = usdNum.toFixed(2);
+        displayCurrency = 'USD';
       }
     } else if (currencyOverride === 'USD' && displayCurrency === 'USD') {
       displayCurrency = 'USD';
@@ -187,6 +194,7 @@ function App() {
               <option value="USD">USD ($)</option>
               <option value="AED">AED</option>
               <option value="EUR">EUR</option>
+              <option value="TRY">TRY</option>
             </select>
           </div>
         </form>
