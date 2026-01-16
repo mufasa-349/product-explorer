@@ -156,6 +156,8 @@ async function searchAmazon(query) {
     console.log(`[AMAZON] Ürün elementleri aranıyor...`);
     const products = await page.evaluate((searchQuery) => {
       const items = [];
+      const nonSponsoredItems = [];
+      const sponsoredItems = [];
       // Önce ana selector'ı dene
       let productElements = document.querySelectorAll('[data-component-type="s-search-result"]');
       
@@ -178,7 +180,7 @@ async function searchAmazon(query) {
       console.log(`[AMAZON] Arama sorgusu kelimeleri: ${queryWords.join(', ')}`);
 
       productElements.forEach((element, index) => {
-        if (items.length >= 3) return; // İlk 3 ürünü al
+        if (nonSponsoredItems.length >= 3 && sponsoredItems.length >= 1) return;
 
         try {
           // Ürün adı - farklı selector'ları dene
@@ -199,6 +201,12 @@ async function searchAmazon(query) {
           if (index < 5) {
             console.log(`[AMAZON] Ürün ${index + 1} - Title: "${title.substring(0, 50)}..."`);
           }
+
+          // Sponsored kontrolü
+          const sponsoredElement = element.querySelector(
+            '.s-sponsored-label-text, [data-component-type="sp-sponsored-result"], [data-csa-c-content-id*="sponsored"], [aria-label*="Sponsored"], [aria-label*="Gesponsert"]'
+          );
+          const isSponsored = Boolean(sponsoredElement) || (element.textContent || '').toLowerCase().includes('sponsored');
 
           // Ürün adının arama sorgusu ile eşleşme skorunu hesapla
           let matchScore = 0;
@@ -287,17 +295,23 @@ async function searchAmazon(query) {
           const image = imageElement ? (imageElement.getAttribute('src') || imageElement.getAttribute('data-src')) : '';
 
           if (title && link) {
-            if (items.length < 3) {
+            if (nonSponsoredItems.length < 3) {
               console.log(`[AMAZON] Ürün eklendi: "${title.substring(0, 40)}..." - Fiyat: ${price || 'Bulunamadı'} - Eşleşme: ${matchScore}/${queryWords.length} (${matchPercent}%)`);
             }
-            items.push({
+            const product = {
               title,
               price: price || 'Fiyat bulunamadı',
               link,
               image,
               matchScore,
-              matchPercent
-            });
+              matchPercent,
+              isSponsored
+            };
+            if (isSponsored) {
+              if (sponsoredItems.length < 1) sponsoredItems.push(product);
+            } else {
+              if (nonSponsoredItems.length < 3) nonSponsoredItems.push(product);
+            }
           } else {
             if (index < 5) {
               if (!title) console.log(`[AMAZON] Ürün ${index + 1} atlandı - Title yok`);
@@ -309,6 +323,7 @@ async function searchAmazon(query) {
         }
       });
 
+      items.push(...nonSponsoredItems, ...sponsoredItems);
       return items;
     }, query);
     

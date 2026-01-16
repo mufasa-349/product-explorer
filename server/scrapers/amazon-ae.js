@@ -42,6 +42,8 @@ async function searchAmazonAE(query) {
     console.log(`[AMAZON.AE] Ürün elementleri aranıyor...`);
     const products = await page.evaluate((searchQuery) => {
       const items = [];
+      const nonSponsoredItems = [];
+      const sponsoredItems = [];
       let productElements = document.querySelectorAll('[data-component-type="s-search-result"]');
       if (productElements.length === 0) {
         productElements = document.querySelectorAll('.s-result-item[data-asin]');
@@ -54,7 +56,7 @@ async function searchAmazonAE(query) {
       const queryWords = normalizedQuery.split(' ').filter(w => w.length > 0);
 
       productElements.forEach((element) => {
-        if (items.length >= 3) return;
+        if (nonSponsoredItems.length >= 3 && sponsoredItems.length >= 1) return;
 
         try {
           const brandElement = element.querySelector('[data-cy="title-recipe"] .a-row.a-color-secondary h2 span, h2.a-size-mini span');
@@ -72,6 +74,11 @@ async function searchAmazonAE(query) {
           }
 
           if (!title) return;
+
+          const sponsoredElement = element.querySelector(
+            '.s-sponsored-label-text, [data-component-type="sp-sponsored-result"], [data-csa-c-content-id*="sponsored"], [aria-label*="Sponsored"], [aria-label*="Gesponsert"]'
+          );
+          const isSponsored = Boolean(sponsoredElement) || (element.textContent || '').toLowerCase().includes('sponsored');
 
           const normalizedTitle = title.toLowerCase();
           const normalizedTitleForMatch = normalizedTitle
@@ -145,21 +152,28 @@ async function searchAmazonAE(query) {
           const image = imageElement ? (imageElement.getAttribute('src') || imageElement.getAttribute('data-src')) : '';
 
           if (title && link) {
-            items.push({
+            const product = {
               title,
               price: price || 'Fiyat bulunamadı',
               currency,
               link,
               image,
               matchScore,
-              matchPercent
-            });
+              matchPercent,
+              isSponsored
+            };
+            if (isSponsored) {
+              if (sponsoredItems.length < 1) sponsoredItems.push(product);
+            } else {
+              if (nonSponsoredItems.length < 3) nonSponsoredItems.push(product);
+            }
           }
         } catch (error) {
           console.error('Ürün parse hatası:', error);
         }
       });
 
+      items.push(...nonSponsoredItems, ...sponsoredItems);
       return items;
     }, query);
 

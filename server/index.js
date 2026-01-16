@@ -133,6 +133,10 @@ app.post('/api/search', async (req, res) => {
         ? (titleBNormalized.includes(capacityToken) || titleB.includes(capacityToken.replace('tb', ' tb')))
         : false;
 
+      const sponsoredA = Boolean(a.isSponsored);
+      const sponsoredB = Boolean(b.isSponsored);
+
+      if (sponsoredA !== sponsoredB) return sponsoredA ? 1 : -1;
       if (brandMatchA !== brandMatchB) return brandMatchA ? -1 : 1;
       if (capacityMatchA !== capacityMatchB) return capacityMatchA ? -1 : 1;
       if (exactPhraseA !== exactPhraseB) return exactPhraseA ? -1 : 1;
