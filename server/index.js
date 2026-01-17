@@ -4,11 +4,12 @@ const { searchAmazon } = require('./scrapers/amazon');
 const { searchAmazonAE } = require('./scrapers/amazon-ae');
 const { searchAmazonDE } = require('./scrapers/amazon-de');
 const { searchEbay } = require('./scrapers/ebay');
+const { searchIdealo } = require('./scrapers/idealo');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
 const AED_TO_USD_RATE = parseFloat(process.env.AED_TO_USD_RATE) || 0.2723;
-const EUR_TO_USD_RATE = parseFloat(process.env.EUR_TO_USD_RATE) || 1.09;
+const EUR_TO_TRY_RATE = parseFloat(process.env.EUR_TO_TRY_RATE) || 51.0;
 const USD_TO_TRY_RATE = parseFloat(process.env.USD_TO_TRY_RATE) || 44.0;
 
 // CORS ayarları
@@ -44,6 +45,8 @@ app.post('/api/search', async (req, res) => {
           siteResults = await searchAmazonAE(query);
         } else if (site === 'amazon_de') {
           siteResults = await searchAmazonDE(query);
+        } else if (site === 'idealo') {
+          siteResults = await searchIdealo(query);
         } else if (site === 'ebay') {
           siteResults = await searchEbay(query);
         }
@@ -84,11 +87,11 @@ app.post('/api/search', async (req, res) => {
           } else if (product.currency && product.currency.toUpperCase() === 'EUR') {
             const basePrice = parseFloat(product.price);
             if (!isNaN(basePrice)) {
-              const usdPrice = basePrice * EUR_TO_USD_RATE;
+              const tryPrice = Math.ceil((basePrice * EUR_TO_TRY_RATE) / 100) * 100;
               normalizedProduct = {
                 ...product,
-                price: usdPrice.toFixed(2),
-                currency: 'USD',
+                price: tryPrice.toFixed(0),
+                currency: 'TRY',
                 originalPrice: product.price,
                 originalCurrency: product.currency
               };

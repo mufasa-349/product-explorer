@@ -14,6 +14,7 @@ function App() {
     amazon: 25,
     amazon_ae: 20,
     amazon_de: 20,
+    idealo: 10,
     ebay: 10
   };
 
@@ -173,6 +174,15 @@ function App() {
             <label className="site-checkbox">
               <input
                 type="checkbox"
+                checked={selectedSites.includes('idealo')}
+                onChange={() => handleSiteToggle('idealo')}
+                disabled={loading}
+              />
+              <span>Idealo.de</span>
+            </label>
+            <label className="site-checkbox">
+              <input
+                type="checkbox"
                 checked={selectedSites.includes('ebay')}
                 onChange={() => handleSiteToggle('ebay')}
                 disabled={loading}
@@ -229,6 +239,8 @@ function App() {
                               ? 'Amazon.ae'
                               : product.site === 'amazon_de'
                                 ? 'Amazon.de'
+                                : product.site === 'idealo'
+                                  ? 'Idealo.de'
                                 : 'eBay.com'}
                         </span>
                         {(() => {
@@ -269,6 +281,8 @@ function App() {
                         ? 'Amazon.ae'
                         : result.site === 'amazon_de'
                           ? 'Amazon.de'
+                          : result.site === 'idealo'
+                            ? 'Idealo.de'
                           : 'eBay.com'}: 
                   </span>
                   {result.success ? (
