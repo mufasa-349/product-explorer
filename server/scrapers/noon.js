@@ -64,6 +64,12 @@ async function searchNoon(query) {
             ? Math.round((matchedWords.length / queryWords.length) * 100)
             : 0;
 
+          const minScore = queryWords.length >= 4 ? 3 : queryWords.length >= 2 ? 2 : 1;
+          const minPercent = queryWords.length >= 4 ? 60 : queryWords.length >= 2 ? 50 : 0;
+          if (matchScore < minScore || matchPercent < minPercent) {
+            return;
+          }
+
           const priceElement = element.querySelector(
             '[data-qa="plp-product-box-price"] .Price-module-scss-module__q-4KEG__amount, .Price-module-scss-module__q-4KEG__amount, .Price-module-scss-module__ozJB4G__productPrice'
           );
