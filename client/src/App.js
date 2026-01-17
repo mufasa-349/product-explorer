@@ -114,6 +114,13 @@ function App() {
         { id: 'toppreise', label: 'Toppreise.ch' },
         { id: 'digitec', label: 'Digitec.ch' }
       ]
+    },
+    {
+      id: 'gr',
+      label: 'Yunanistan',
+      sites: [
+        { id: 'skroutz', label: 'Skroutz.gr' }
+      ]
     }
   ];
 
@@ -130,6 +137,7 @@ function App() {
     pazaruvaj: 10,
     technomarket: 10,
     technopolis: 10,
+    skroutz: 10,
     ebay: 10
   };
 
@@ -468,11 +476,13 @@ function App() {
                                             ? 'Technomarket.bg'
                                             : product.site === 'technopolis'
                                               ? 'Technopolis.bg'
-                                              : product.site === 'toppreise'
-                                                ? 'Toppreise.ch'
-                                                : product.site === 'digitec'
-                                                  ? 'Digitec.ch'
-                                                  : 'eBay.com'}
+                                              : product.site === 'skroutz'
+                                                ? 'Skroutz.gr'
+                                                : product.site === 'toppreise'
+                                                  ? 'Toppreise.ch'
+                                                  : product.site === 'digitec'
+                                                    ? 'Digitec.ch'
+                                                    : 'eBay.com'}
                         </span>
                         {(() => {
                           const priceInfo = formatPrice(product);
@@ -526,11 +536,13 @@ function App() {
                                       ? 'Technomarket.bg'
                                       : result.site === 'technopolis'
                                         ? 'Technopolis.bg'
-                                        : result.site === 'toppreise'
-                                          ? 'Toppreise.ch'
-                                          : result.site === 'digitec'
-                                            ? 'Digitec.ch'
-                                            : 'eBay.com'}: 
+                                        : result.site === 'skroutz'
+                                          ? 'Skroutz.gr'
+                                          : result.site === 'toppreise'
+                                            ? 'Toppreise.ch'
+                                            : result.site === 'digitec'
+                                              ? 'Digitec.ch'
+                                              : 'eBay.com'}: 
                   </span>
                   {result.success ? (
                     <span className="status-success">

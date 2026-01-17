@@ -16,6 +16,7 @@ const { searchDigitec } = require('./scrapers/digitec');
 const { searchPazaruvaj } = require('./scrapers/pazaruvaj');
 const { searchTechnomarket } = require('./scrapers/technomarket');
 const { searchTechnopolis } = require('./scrapers/technopolis');
+const { searchSkroutz } = require('./scrapers/skroutz');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -162,6 +163,8 @@ async function runSearch(query, sites, options = {}) {
         siteResults = await withTimeout(searchTechnomarket(query), site);
       } else if (site === 'technopolis') {
         siteResults = await withTimeout(searchTechnopolis(query), site);
+      } else if (site === 'skroutz') {
+        siteResults = await withTimeout(searchSkroutz(query), site);
       } else if (site === 'ebay') {
         siteResults = await withTimeout(searchEbay(query), site);
       }

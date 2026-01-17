@@ -1,9 +1,9 @@
 const puppeteer = require('puppeteer');
 
-async function searchDigitec(query) {
+async function searchSkroutz(query) {
   let browser;
   try {
-    console.log(`[DIGITEC] Arama başlatılıyor: "${query}"`);
+    console.log(`[SKROUTZ] Arama başlatılıyor: "${query}"`);
 
     browser = await puppeteer.launch({
       headless: true,
@@ -13,8 +13,8 @@ async function searchDigitec(query) {
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-    const searchUrl = `https://www.digitec.ch/en/search?q=${encodeURIComponent(query)}`;
-    console.log(`[DIGITEC] Arama sayfasına gidiliyor: ${searchUrl}`);
+    const searchUrl = `https://www.skroutz.gr/c/87/eksoterikoi-sklhroi-diskoi/m/28/Samsung.html?keyphrase=${encodeURIComponent(query)}`;
+    console.log(`[SKROUTZ] Arama sayfasına gidiliyor: ${searchUrl}`);
 
     await page.goto(searchUrl, {
       waitUntil: 'networkidle2',
@@ -23,10 +23,10 @@ async function searchDigitec(query) {
 
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    console.log(`[DIGITEC] Ürün elementleri aranıyor...`);
+    console.log(`[SKROUTZ] Ürün elementleri aranıyor...`);
     const products = await page.evaluate((searchQuery) => {
       const items = [];
-      const productElements = document.querySelectorAll('a[aria-label][href*="/product/"]');
+      const productElements = document.querySelectorAll('li[data-testid="sku-card"]');
 
       const normalizedQuery = searchQuery.toLowerCase().trim().replace(/\s+/g, ' ');
       const queryWords = normalizedQuery.split(' ').filter(w => w.length > 0);
@@ -35,7 +35,8 @@ async function searchDigitec(query) {
         if (items.length >= 4) return;
 
         try {
-          const rawTitle = element.getAttribute('aria-label')?.trim() || '';
+          const titleElement = element.querySelector('[data-e2e-testid="sku-title-link"]');
+          const rawTitle = titleElement ? titleElement.textContent.trim() : '';
           if (!rawTitle) return;
 
           const normalizedTitle = rawTitle.toLowerCase();
@@ -63,15 +64,7 @@ async function searchDigitec(query) {
             ? Math.round((matchedWords.length / queryWords.length) * 100)
             : 0;
 
-          const link = element.getAttribute('href')
-            ? `https://www.digitec.ch${element.getAttribute('href')}`
-            : '';
-
-          if (!link) return;
-
-          const priceElement = element.closest('article')?.querySelector(
-            '[data-test="product-price"], [data-test="price"], div.yRGTUHk, span.yRGTUHk1'
-          );
+          const priceElement = element.querySelector('[data-e2e-testid="sku-price-link"]');
           let price = '';
           if (priceElement) {
             const priceText = priceElement.textContent || '';
@@ -100,19 +93,31 @@ async function searchDigitec(query) {
             }
           }
 
-          const imageElement = element.closest('article')?.querySelector('img');
+          const linkElement = element.querySelector('a.js-sku-link');
+          let link = '';
+          if (linkElement) {
+            const href = linkElement.getAttribute('href') || '';
+            link = href.startsWith('http') ? href : `https://www.skroutz.gr${href}`;
+          }
+
+          const imageElement = element.querySelector('[data-testid="sku-pic-img"]');
           const image = imageElement ? (imageElement.getAttribute('src') || imageElement.getAttribute('data-src')) : '';
 
-          items.push({
-            title: rawTitle.replace(/\s+/g, ' ').trim(),
-            price: price || 'Fiyat bulunamadı',
-            currency: 'CHF',
-            link,
-            image,
-            matchScore,
-            matchPercent,
-            isSponsored: false
-          });
+          const sponsoredElement = element.querySelector('.shop-promoter .label-text');
+          const isSponsored = Boolean(sponsoredElement) || (element.textContent || '').toLowerCase().includes('advertisement');
+
+          if (rawTitle && link) {
+            items.push({
+              title: rawTitle,
+              price: price || 'Fiyat bulunamadı',
+              currency: 'EUR',
+              link,
+              image,
+              matchScore,
+              matchPercent,
+              isSponsored
+            });
+          }
         } catch (error) {
           console.error('Ürün parse hatası:', error);
         }
@@ -121,16 +126,16 @@ async function searchDigitec(query) {
       return items;
     }, query);
 
-    console.log(`[DIGITEC] ${products.length} ürün bulundu`);
+    console.log(`[SKROUTZ] ${products.length} ürün bulundu`);
 
     await browser.close();
 
     if (products.length === 0) {
-      console.log(`[DIGITEC] Ürün bulunamadı`);
+      console.log(`[SKROUTZ] Ürün bulunamadı`);
       throw new Error('Ürün bulunamadı');
     }
 
-    console.log(`[DIGITEC] Arama tamamlandı, ${products.length} ürün döndürülüyor`);
+    console.log(`[SKROUTZ] Arama tamamlandı, ${products.length} ürün döndürülüyor`);
     return products;
   } catch (error) {
     if (browser) {
@@ -145,4 +150,4 @@ async function searchDigitec(query) {
   }
 }
 
-module.exports = { searchDigitec };
+module.exports = { searchSkroutz };
