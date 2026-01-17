@@ -106,6 +106,13 @@ function App() {
       ]
     },
     {
+      id: 'tr',
+      label: 'Türkiye',
+      sites: [
+        { id: 'akakce', label: 'Akakce.com' }
+      ]
+    },
+    {
       id: 'bg',
       label: 'Bulgaristan',
       sites: [
@@ -147,6 +154,7 @@ function App() {
     technomarket: 10,
     technopolis: 10,
     skroutz: 10,
+    akakce: 8,
     ebay: 10
   };
 
@@ -503,6 +511,8 @@ function App() {
                                 ? 'Amazon.de'
                                 : product.site === 'amazon_uk'
                                   ? 'Amazon.co.uk'
+                                  : product.site === 'akakce'
+                                    ? 'Akakce.com'
                                   : product.site === 'idealo'
                                     ? 'Idealo.de'
                                     : product.site === 'noon'
@@ -565,6 +575,8 @@ function App() {
                           ? 'Amazon.de'
                           : result.site === 'amazon_uk'
                             ? 'Amazon.co.uk'
+                            : result.site === 'akakce'
+                              ? 'Akakce.com'
                             : result.site === 'idealo'
                               ? 'Idealo.de'
                               : result.site === 'noon'

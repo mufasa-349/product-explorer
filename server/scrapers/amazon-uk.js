@@ -139,7 +139,7 @@ async function searchAmazonUK(query) {
     console.log(`[AMAZON.UK] Arama başlatılıyor: "${query}"`);
 
     browser = await puppeteer.launch({
-      headless: false,
+      headless: true,
       slowMo: 0,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
