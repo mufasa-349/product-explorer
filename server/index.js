@@ -187,7 +187,14 @@ app.post('/api/search', upload.single('image'), async (req, res) => {
       }
     });
 
-    await addImageSimilarity(allProducts, req.file?.buffer);
+    let imageWarning = null;
+    if (req.file?.buffer) {
+      try {
+        await addImageSimilarity(allProducts, req.file.buffer);
+      } catch (e) {
+        imageWarning = 'Görsel formatı uyumlu değil, sonuçlar etkilenmedi.';
+      }
+    }
 
     // Önce görsel benzerliği, sonra marka eşleşmesi, kapasite/ifade eşleşmesi, yakınsa ucuz olan öne gelsin
     const normalizedQuery = (query || '').toLowerCase().trim().replace(/\s+/g, ' ');
@@ -249,7 +256,8 @@ app.post('/api/search', upload.single('image'), async (req, res) => {
     res.json({
       query,
       results,
-      sortedProducts: allProducts
+      sortedProducts: allProducts,
+      imageWarning
     });
   } catch (error) {
     res.status(500).json({ error: 'Sunucu hatası: ' + error.message });

@@ -11,6 +11,41 @@ function App() {
   const [currencyOverride, setCurrencyOverride] = useState('auto');
   const [imageFile, setImageFile] = useState(null);
 
+  const countryGroups = [
+    {
+      id: 'usa',
+      label: 'Amerika',
+      sites: [
+        { id: 'amazon', label: 'Amazon.com' },
+        { id: 'ebay', label: 'Ebay.com' }
+      ]
+    },
+    {
+      id: 'uae',
+      label: 'Dubai',
+      sites: [
+        { id: 'amazon_ae', label: 'Amazon.ae' },
+        { id: 'noon', label: 'Noon.com' },
+        { id: 'pricena', label: 'Pricena.ae' }
+      ]
+    },
+    {
+      id: 'de',
+      label: 'Almanya',
+      sites: [
+        { id: 'amazon_de', label: 'Amazon.de' },
+        { id: 'idealo', label: 'Idealo.de' }
+      ]
+    },
+    {
+      id: 'bg',
+      label: 'Bulgaristan',
+      sites: [
+        { id: 'emag', label: 'eMAG.bg' }
+      ]
+    }
+  ];
+
   const siteEstimates = {
     amazon: 25,
     amazon_ae: 20,
@@ -28,6 +63,18 @@ function App() {
         ? prev.filter(s => s !== site)
         : [...prev, site]
     );
+  };
+
+  const isCountrySelected = (sites) => {
+    if (!sites.length) return false;
+    return sites.every(site => selectedSites.includes(site));
+  };
+
+  const toggleCountrySites = (sites, checked) => {
+    setSelectedSites(prev => {
+      const withoutGroup = prev.filter(site => !sites.includes(site));
+      return checked ? [...withoutGroup, ...sites] : withoutGroup;
+    });
   };
 
   const handleSearch = async (e) => {
@@ -129,128 +176,86 @@ function App() {
         <h1 className="title">Product Explorer</h1>
         
         <form onSubmit={handleSearch} className="search-form">
-          <div className="search-bar-container">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Ürün ara..."
-              className="search-bar"
-              disabled={loading}
-            />
-            <button 
-              type="submit" 
-              className="search-button"
-              disabled={loading}
-            >
-              {loading ? 'Aranıyor...' : 'Ara'}
-            </button>
-          </div>
-          <div className="search-bar-container">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-              className="search-bar"
-              disabled={loading}
-            />
-          </div>
-          {!loading && (
-            <div className="search-estimate">
-              Tahmini bekleme süresi: ~{estimateWaitSeconds(selectedSites)} sn
+          <div className="search-layout">
+            <div className="search-controls">
+              <div className="search-bar-container">
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Ürün ara..."
+                  className="search-bar"
+                  disabled={loading}
+                />
+                <button 
+                  type="submit" 
+                  className="search-button"
+                  disabled={loading}
+                >
+                  {loading ? 'Aranıyor...' : 'Ara'}
+                </button>
+              </div>
+              <div className="search-bar-container">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                  className="search-bar"
+                  disabled={loading}
+                />
+              </div>
+              <div className="currency-row">
+                <label className="site-checkbox">
+                  <span>Para birimi:</span>
+                </label>
+                <select
+                  value={currencyOverride}
+                  onChange={(e) => setCurrencyOverride(e.target.value)}
+                  disabled={loading}
+                  className="currency-select"
+                >
+                  <option value="auto">Otomatik</option>
+                  <option value="USD">USD ($)</option>
+                  <option value="AED">AED</option>
+                  <option value="EUR">EUR</option>
+                  <option value="TRY">TRY</option>
+                </select>
+              </div>
+              {!loading && (
+                <div className="search-estimate">
+                  Tahmini bekleme süresi: ~{estimateWaitSeconds(selectedSites)} sn
+                </div>
+              )}
             </div>
-          )}
-
-          <div className="site-selection">
-            <label className="site-checkbox">
-              <input
-                type="checkbox"
-                checked={selectedSites.includes('amazon')}
-                onChange={() => handleSiteToggle('amazon')}
-                disabled={loading}
-              />
-              <span>Amazon.com</span>
-            </label>
-            <label className="site-checkbox">
-              <input
-                type="checkbox"
-                checked={selectedSites.includes('amazon_ae')}
-                onChange={() => handleSiteToggle('amazon_ae')}
-                disabled={loading}
-              />
-              <span>Amazon.ae</span>
-            </label>
-            <label className="site-checkbox">
-              <input
-                type="checkbox"
-                checked={selectedSites.includes('amazon_de')}
-                onChange={() => handleSiteToggle('amazon_de')}
-                disabled={loading}
-              />
-              <span>Amazon.de</span>
-            </label>
-            <label className="site-checkbox">
-              <input
-                type="checkbox"
-                checked={selectedSites.includes('idealo')}
-                onChange={() => handleSiteToggle('idealo')}
-                disabled={loading}
-              />
-              <span>Idealo.de</span>
-            </label>
-            <label className="site-checkbox">
-              <input
-                type="checkbox"
-                checked={selectedSites.includes('noon')}
-                onChange={() => handleSiteToggle('noon')}
-                disabled={loading}
-              />
-              <span>Noon.com</span>
-            </label>
-            <label className="site-checkbox">
-              <input
-                type="checkbox"
-                checked={selectedSites.includes('pricena')}
-                onChange={() => handleSiteToggle('pricena')}
-                disabled={loading}
-              />
-              <span>Pricena.com</span>
-            </label>
-            <label className="site-checkbox">
-              <input
-                type="checkbox"
-                checked={selectedSites.includes('emag')}
-                onChange={() => handleSiteToggle('emag')}
-                disabled={loading}
-              />
-              <span>eMAG.bg</span>
-            </label>
-            <label className="site-checkbox">
-              <input
-                type="checkbox"
-                checked={selectedSites.includes('ebay')}
-                onChange={() => handleSiteToggle('ebay')}
-                disabled={loading}
-              />
-              <span>eBay.com</span>
-            </label>
-          </div>
-          <div className="site-selection">
-            <label className="site-checkbox">
-              <span>Para birimi:</span>
-            </label>
-            <select
-              value={currencyOverride}
-              onChange={(e) => setCurrencyOverride(e.target.value)}
-              disabled={loading}
-              className="currency-select"
-            >
-              <option value="auto">Otomatik</option>
-              <option value="USD">USD ($)</option>
-              <option value="AED">AED</option>
-              <option value="EUR">EUR</option>
-              <option value="TRY">TRY</option>
-            </select>
+            <div className="site-groups">
+              <div className="site-groups-title">Ülkeler</div>
+              {countryGroups.map((group) => (
+                <div key={group.id} className="country-group">
+                  <label className="site-checkbox country-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={isCountrySelected(group.sites.map(site => site.id))}
+                      onChange={(e) => toggleCountrySites(group.sites.map(site => site.id), e.target.checked)}
+                      disabled={loading}
+                    />
+                    <span>{group.label}</span>
+                  </label>
+                  <div className="country-sites">
+                    {group.sites.map((site) => (
+                      <label key={site.id} className="site-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={selectedSites.includes(site.id)}
+                          onChange={() => handleSiteToggle(site.id)}
+                          disabled={loading}
+                        />
+                        <span>{site.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </form>
 
@@ -261,6 +266,9 @@ function App() {
             <h2 className="results-title">
               "{results.query}" için {results.sortedProducts.length} sonuç bulundu
             </h2>
+            {results.imageWarning && (
+              <div className="warning-message">{results.imageWarning}</div>
+            )}
 
             {results.sortedProducts.length > 0 ? (
               <div className="products-list">
