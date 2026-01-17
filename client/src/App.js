@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import './App.css';
 import axios from 'axios';
 
@@ -13,6 +13,43 @@ function App() {
   const [imageNote, setImageNote] = useState('');
   const [progress, setProgress] = useState(null);
   const [logs, setLogs] = useState([]);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastVisible, setToastVisible] = useState(false);
+  useEffect(() => {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
+  }, []);
+
+  const showToast = (message) => {
+    setToastMessage(message);
+    setToastVisible(true);
+    setTimeout(() => setToastVisible(false), 4000);
+  };
+
+  const notifySearchDone = async (total) => {
+    const message = `Arama tamamlandı, ${total} ürün bulundu`;
+    if (!('Notification' in window)) {
+      showToast(message);
+      return;
+    }
+    if (Notification.permission === 'default') {
+      try {
+        await Notification.requestPermission();
+      } catch (e) {
+        showToast(message);
+        return;
+      }
+    }
+    if (Notification.permission !== 'granted') {
+      showToast(message);
+      return;
+    }
+    new Notification('Arama tamamlandı', {
+      body: `${total} ürün bulundu`
+    });
+  };
   const handleImagePaste = (e) => {
     const items = e.clipboardData?.items || [];
     for (const item of items) {
@@ -147,6 +184,8 @@ function App() {
         const data = JSON.parse(event.data);
         setResults(data);
         setLoading(false);
+        const total = data?.sortedProducts?.length ?? 0;
+        notifySearchDone(total);
         eventSource.close();
       });
 
@@ -356,6 +395,7 @@ function App() {
         </form>
 
         {error && <div className="error-message">{error}</div>}
+        {toastVisible && <div className="toast-message">{toastMessage}</div>}
 
         {results && (
           <div className="results">

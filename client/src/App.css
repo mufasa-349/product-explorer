@@ -301,6 +301,16 @@
   border: 1px solid #ffe0b2;
 }
 
+.toast-message {
+  background-color: #e7f7ef;
+  color: #2d8659;
+  padding: 12px 15px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  text-align: center;
+  border: 1px solid #bfe6cf;
+}
+
 .results {
   margin-top: 30px;
 }
