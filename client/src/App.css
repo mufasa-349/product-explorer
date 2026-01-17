@@ -45,10 +45,42 @@
   background: #fafafa;
 }
 
+.site-groups-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
 .site-groups-title {
   font-weight: 700;
-  margin-bottom: 10px;
   color: #333;
+}
+
+.site-groups-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.site-groups-button {
+  background: #f0f2ff;
+  border: 1px solid #d7dcff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  color: #4a5ad3;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.site-groups-button:hover:not(:disabled) {
+  background: #e4e8ff;
+}
+
+.site-groups-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .country-group {

@@ -138,6 +138,7 @@ function App() {
       ]
     }
   ];
+  const allSiteIds = countryGroups.flatMap(group => group.sites.map(site => site.id));
 
   const siteEstimates = {
     amazon: 25,
@@ -176,6 +177,14 @@ function App() {
       const withoutGroup = prev.filter(site => !sites.includes(site));
       return checked ? [...withoutGroup, ...sites] : withoutGroup;
     });
+  };
+
+  const handleSelectAllSites = () => {
+    setSelectedSites(allSiteIds);
+  };
+
+  const handleDeselectAllSites = () => {
+    setSelectedSites([]);
   };
 
   const handleSearch = async (e) => {
@@ -444,7 +453,27 @@ function App() {
               )}
             </div>
             <div className="site-groups">
-              <div className="site-groups-title">Ülkeler</div>
+              <div className="site-groups-header">
+                <div className="site-groups-title">Ülkeler</div>
+                <div className="site-groups-actions">
+                  <button
+                    type="button"
+                    className="site-groups-button"
+                    onClick={handleSelectAllSites}
+                    disabled={loading}
+                  >
+                    Hepsini seç
+                  </button>
+                  <button
+                    type="button"
+                    className="site-groups-button"
+                    onClick={handleDeselectAllSites}
+                    disabled={loading}
+                  >
+                    Tümünü kaldır
+                  </button>
+                </div>
+              </div>
               {countryGroups.map((group) => (
                 <div key={group.id} className="country-group">
                   <label className="site-checkbox country-checkbox">
