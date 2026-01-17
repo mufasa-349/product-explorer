@@ -28,8 +28,10 @@ function App() {
     setTimeout(() => setToastVisible(false), 4000);
   };
 
-  const notifySearchDone = async (total) => {
-    const message = `Arama tamamlandı, ${total} ürün bulundu`;
+  const notifySearchDone = async (total, durationMs) => {
+    const seconds = durationMs ? Math.round(durationMs / 1000) : 0;
+    const durationText = seconds ? `, süre ${seconds} sn` : '';
+    const message = `Arama tamamlandı, ${total} ürün bulundu${durationText}`;
     if (!('Notification' in window)) {
       showToast(message);
       return;
@@ -47,7 +49,7 @@ function App() {
       return;
     }
     new Notification('Arama tamamlandı', {
-      body: `${total} ürün bulundu`
+      body: `${total} ürün bulundu${durationText}`
     });
   };
   const handleImagePaste = (e) => {
@@ -148,6 +150,7 @@ function App() {
       return;
     }
 
+    const searchStartedAt = Date.now();
     setLoading(true);
     setError(null);
     setResults(null);
@@ -185,7 +188,7 @@ function App() {
         setResults(data);
         setLoading(false);
         const total = data?.sortedProducts?.length ?? 0;
-        notifySearchDone(total);
+        notifySearchDone(total, Date.now() - searchStartedAt);
         eventSource.close();
       });
 
