@@ -180,7 +180,7 @@ async function searchAmazon(query) {
       console.log(`[AMAZON] Arama sorgusu kelimeleri: ${queryWords.join(', ')}`);
 
       productElements.forEach((element, index) => {
-        if (nonSponsoredItems.length >= 3 && sponsoredItems.length >= 1) return;
+        if (nonSponsoredItems.length >= 4 && sponsoredItems.length >= 1) return;
 
         try {
           // Ürün adı - farklı selector'ları dene
@@ -298,7 +298,7 @@ async function searchAmazon(query) {
           const image = imageElement ? (imageElement.getAttribute('src') || imageElement.getAttribute('data-src')) : '';
 
           if (title && link) {
-            if (nonSponsoredItems.length < 3) {
+            if (nonSponsoredItems.length < 4) {
               console.log(`[AMAZON] Ürün eklendi: "${title.substring(0, 40)}..." - Fiyat: ${price || 'Bulunamadı'} - Eşleşme: ${matchScore}/${queryWords.length} (${matchPercent}%)`);
             }
             const product = {
@@ -314,7 +314,7 @@ async function searchAmazon(query) {
             if (isSponsored) {
               if (sponsoredItems.length < 1) sponsoredItems.push(product);
             } else {
-              if (nonSponsoredItems.length < 3) nonSponsoredItems.push(product);
+              if (nonSponsoredItems.length < 4) nonSponsoredItems.push(product);
             }
           } else {
             if (index < 5) {

@@ -1,9 +1,9 @@
 const puppeteer = require('puppeteer');
 
-async function searchIdealo(query) {
+async function searchNoon(query) {
   let browser;
   try {
-    console.log(`[IDEALO] Arama başlatılıyor: "${query}"`);
+    console.log(`[NOON] Arama başlatılıyor: "${query}"`);
 
     browser = await puppeteer.launch({
       headless: true,
@@ -13,8 +13,8 @@ async function searchIdealo(query) {
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-    const searchUrl = `https://www.idealo.de/preisvergleich/MainSearchProductCategory.html?q=${encodeURIComponent(query)}`;
-    console.log(`[IDEALO] Arama sayfasına gidiliyor: ${searchUrl}`);
+    const searchUrl = `https://www.noon.com/uae-en/search/?q=${encodeURIComponent(query)}`;
+    console.log(`[NOON] Arama sayfasına gidiliyor: ${searchUrl}`);
 
     await page.goto(searchUrl, {
       waitUntil: 'networkidle2',
@@ -23,12 +23,10 @@ async function searchIdealo(query) {
 
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    console.log(`[IDEALO] Ürün elementleri aranıyor...`);
+    console.log(`[NOON] Ürün elementleri aranıyor...`);
     const products = await page.evaluate((searchQuery) => {
       const items = [];
-      const productElements = document.querySelectorAll(
-        '.sr-resultList__item, .sr-resultList__item_m6xdA, .sr-resultItemTile_B0odU, .sr-resultList__product, .sr-productList__item'
-      );
+      const productElements = document.querySelectorAll('[data-qa="plp-product-box"]');
 
       const normalizedQuery = searchQuery.toLowerCase().trim().replace(/\s+/g, ' ');
       const queryWords = normalizedQuery.split(' ').filter(w => w.length > 0);
@@ -37,12 +35,8 @@ async function searchIdealo(query) {
         if (items.length >= 4) return;
 
         try {
-          const titleElement = element.querySelector(
-            '.sr-productSummary__title, .sr-productSummary__title a, .sr-productSummary__titleText, .sr-productSummary__title_f5flP, .sr-resultItemLink_YbJS7 a, .sr-resultItemLink_YbJS7 .sr-productSummary__title_f5flP'
-          );
-          let rawTitle = titleElement ? titleElement.textContent.trim() : '';
-          if (!rawTitle) return;
-          rawTitle = rawTitle.replace(/\s+/g, ' ').trim();
+          const titleElement = element.querySelector('[data-qa="plp-product-box-name"], .ProductDetailsSection-module-scss-module__Y6u1Qq__title');
+          const rawTitle = titleElement ? titleElement.textContent.trim() : '';
           if (!rawTitle) return;
 
           const normalizedTitle = rawTitle.toLowerCase();
@@ -71,53 +65,40 @@ async function searchIdealo(query) {
             : 0;
 
           const priceElement = element.querySelector(
-            '.sr-detailedPriceInfo__price_sYVmx, .sr-detailedPriceInfo__price_seller, .sr-detailedPriceInfo__price, .sr-productSummary__price'
+            '[data-qa="plp-product-box-price"] .Price-module-scss-module__q-4KEG__amount, .Price-module-scss-module__q-4KEG__amount, .Price-module-scss-module__ozJB4G__productPrice'
           );
+          const currencyElement = element.querySelector(
+            '[data-qa="plp-product-box-price"] .Price-module-scss-module__q-4KEG__currency, .Price-module-scss-module__q-4KEG__currency, .Price-module-scss-module__ozJB4G__currency'
+          );
+
           let price = '';
+          let currency = 'AED';
           if (priceElement) {
             const priceText = priceElement.textContent || '';
-            const cleaned = priceText.replace(/[^\d.,]/g, '').trim();
-            if (cleaned) {
-              const lastComma = cleaned.lastIndexOf(',');
-              const lastDot = cleaned.lastIndexOf('.');
-              let normalized = cleaned;
-
-              if (lastComma !== -1 && lastDot !== -1) {
-                if (lastDot > lastComma) {
-                  // 1,159.00 -> 1159.00
-                  normalized = cleaned.replace(/,/g, '');
-                } else {
-                  // 1.159,00 -> 1159.00
-                  normalized = cleaned.replace(/\./g, '').replace(',', '.');
-                }
-              } else if (lastComma !== -1) {
-                const decimals = cleaned.length - lastComma - 1;
-                if (decimals === 2) {
-                  normalized = cleaned.replace(/\./g, '').replace(',', '.');
-                } else {
-                  normalized = cleaned.replace(/,/g, '');
-                }
-              }
-
-              price = normalized.replace(/[^0-9.]/g, '');
+            price = priceText.trim().replace(/[^0-9.]/g, '');
+          }
+          if (currencyElement) {
+            const curText = currencyElement.textContent || '';
+            if (curText && curText.trim()) {
+              currency = curText.trim().toUpperCase();
             }
           }
 
-          const linkElement = element.querySelector('.sr-resultItemLink_YbJS7 a, a');
+          const linkElement = element.querySelector('a.PBoxLinkHandler-module-scss-module__WvRpgq__productBoxLink, a');
           let link = '';
           if (linkElement) {
             const href = linkElement.getAttribute('href') || '';
-            link = href.startsWith('http') ? href : 'https://www.idealo.de' + href;
+            link = href.startsWith('http') ? href : 'https://www.noon.com' + href;
           }
 
-          const imageElement = element.querySelector('img');
+          const imageElement = element.querySelector('img.ProductImageCarousel-module-scss-module__SlkSTG__productImage, img');
           const image = imageElement ? (imageElement.getAttribute('src') || imageElement.getAttribute('data-src')) : '';
 
           if (rawTitle && link) {
             items.push({
               title: rawTitle,
               price: price || 'Fiyat bulunamadı',
-              currency: 'EUR',
+              currency,
               link,
               image,
               matchScore,
@@ -133,17 +114,20 @@ async function searchIdealo(query) {
       return items;
     }, query);
 
-    console.log(`[IDEALO] ${products.length} ürün bulundu`);
+    console.log(`[NOON] ${products.length} ürün bulundu`);
 
     await browser.close();
 
     if (products.length === 0) {
-      console.log(`[IDEALO] Ürün bulunamadı`);
+      console.log(`[NOON] Ürün bulunamadı`);
       throw new Error('Ürün bulunamadı');
     }
 
-    console.log(`[IDEALO] Arama tamamlandı, ${products.length} ürün döndürülüyor`);
-    return products;
+    console.log(`[NOON] Arama tamamlandı, ${products.length} ürün döndürülüyor`);
+    return products.map(product => ({
+      ...product,
+      currency: 'AED'
+    }));
   } catch (error) {
     if (browser) {
       await browser.close();
@@ -157,4 +141,4 @@ async function searchIdealo(query) {
   }
 }
 
-module.exports = { searchIdealo };
+module.exports = { searchNoon };

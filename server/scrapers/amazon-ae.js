@@ -56,7 +56,7 @@ async function searchAmazonAE(query) {
       const queryWords = normalizedQuery.split(' ').filter(w => w.length > 0);
 
       productElements.forEach((element) => {
-        if (nonSponsoredItems.length >= 3 && sponsoredItems.length >= 1) return;
+        if (nonSponsoredItems.length >= 4 && sponsoredItems.length >= 1) return;
 
         try {
           const brandElement = element.querySelector('[data-cy="title-recipe"] .a-row.a-color-secondary h2 span, h2.a-size-mini span');
@@ -165,7 +165,7 @@ async function searchAmazonAE(query) {
             if (isSponsored) {
               if (sponsoredItems.length < 1) sponsoredItems.push(product);
             } else {
-              if (nonSponsoredItems.length < 3) nonSponsoredItems.push(product);
+              if (nonSponsoredItems.length < 4) nonSponsoredItems.push(product);
             }
           }
         } catch (error) {
