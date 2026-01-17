@@ -11,19 +11,41 @@ async function setDeliveryZip(page, zip) {
       'input[data-action-type="SELECT_LOCATION"]'
     ];
     let clicked = false;
+    let foundInFirstPass = false;
 
     for (const selector of locationSelectors) {
       try {
-        await page.waitForSelector(selector, { timeout: 8000, visible: true });
+        await page.waitForSelector(selector, { timeout: 5000, visible: true });
       } catch (e) {
         // Bu selector görünür değilse sıradakini dene
       }
       const el = await page.$(selector);
       if (el) {
+        foundInFirstPass = true;
         console.log(`[AMAZON] Delivery address butonu tıklanıyor: ${selector}`);
         await el.click();
         clicked = true;
         break;
+      }
+    }
+
+    if (!foundInFirstPass && !clicked) {
+      console.log(`[AMAZON] 5 sn içinde bulunamadı, sayfa yenileniyor...`);
+      await page.reload({ waitUntil: 'networkidle2', timeout: 30000 });
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      for (const selector of locationSelectors) {
+        try {
+          await page.waitForSelector(selector, { timeout: 5000, visible: true });
+        } catch (e) {
+          // noop
+        }
+        const el = await page.$(selector);
+        if (el) {
+          console.log(`[AMAZON] Delivery address butonu tıklanıyor: ${selector}`);
+          await el.click();
+          clicked = true;
+          break;
+        }
       }
     }
 
