@@ -114,6 +114,17 @@ async function runSearch(query, sites, options = {}) {
   };
   const onLog = options.onLog || ((message) => logs.push(message));
   const onProgress = options.onProgress || ((data) => Object.assign(progress, data));
+  const SITE_TIMEOUT_MS = 25000;
+
+  const withTimeout = (promise, site) => {
+    let timeoutId;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error(`${site} timeout oldu, atlanıyor`));
+      }, SITE_TIMEOUT_MS);
+    });
+    return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
+  };
 
   const results = [];
 
@@ -122,21 +133,21 @@ async function runSearch(query, sites, options = {}) {
       onLog(`[${site.toUpperCase()}] Arama başlatılıyor`);
       let siteResults = [];
       if (site === 'amazon') {
-        siteResults = await searchAmazon(query);
+        siteResults = await withTimeout(searchAmazon(query), site);
       } else if (site === 'amazon_ae') {
-        siteResults = await searchAmazonAE(query);
+        siteResults = await withTimeout(searchAmazonAE(query), site);
       } else if (site === 'amazon_de') {
-        siteResults = await searchAmazonDE(query);
+        siteResults = await withTimeout(searchAmazonDE(query), site);
       } else if (site === 'idealo') {
-        siteResults = await searchIdealo(query);
+        siteResults = await withTimeout(searchIdealo(query), site);
       } else if (site === 'noon') {
-        siteResults = await searchNoon(query);
+        siteResults = await withTimeout(searchNoon(query), site);
       } else if (site === 'pricena') {
-        siteResults = await searchPricena(query);
+        siteResults = await withTimeout(searchPricena(query), site);
       } else if (site === 'emag') {
-        siteResults = await searchEmag(query);
+        siteResults = await withTimeout(searchEmag(query), site);
       } else if (site === 'ebay') {
-        siteResults = await searchEbay(query);
+        siteResults = await withTimeout(searchEbay(query), site);
       }
 
       results.push({
