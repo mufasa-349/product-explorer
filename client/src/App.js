@@ -16,6 +16,8 @@ function App() {
     amazon_de: 20,
     idealo: 10,
     noon: 12,
+    pricena: 10,
+    emag: 12,
     ebay: 10
   };
 
@@ -193,6 +195,24 @@ function App() {
             <label className="site-checkbox">
               <input
                 type="checkbox"
+                checked={selectedSites.includes('pricena')}
+                onChange={() => handleSiteToggle('pricena')}
+                disabled={loading}
+              />
+              <span>Pricena.com</span>
+            </label>
+            <label className="site-checkbox">
+              <input
+                type="checkbox"
+                checked={selectedSites.includes('emag')}
+                onChange={() => handleSiteToggle('emag')}
+                disabled={loading}
+              />
+              <span>eMAG.bg</span>
+            </label>
+            <label className="site-checkbox">
+              <input
+                type="checkbox"
                 checked={selectedSites.includes('ebay')}
                 onChange={() => handleSiteToggle('ebay')}
                 disabled={loading}
@@ -253,6 +273,10 @@ function App() {
                                   ? 'Idealo.de'
                                   : product.site === 'noon'
                                     ? 'Noon.com'
+                                    : product.site === 'pricena'
+                                      ? 'Pricena.com'
+                                      : product.site === 'emag'
+                                        ? 'eMAG.bg'
                                 : 'eBay.com'}
                         </span>
                         {(() => {
@@ -297,6 +321,10 @@ function App() {
                             ? 'Idealo.de'
                             : result.site === 'noon'
                               ? 'Noon.com'
+                              : result.site === 'pricena'
+                                ? 'Pricena.com'
+                                : result.site === 'emag'
+                                  ? 'eMAG.bg'
                           : 'eBay.com'}: 
                   </span>
                   {result.success ? (

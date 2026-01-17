@@ -6,6 +6,8 @@ const { searchAmazonDE } = require('./scrapers/amazon-de');
 const { searchEbay } = require('./scrapers/ebay');
 const { searchIdealo } = require('./scrapers/idealo');
 const { searchNoon } = require('./scrapers/noon');
+const { searchPricena } = require('./scrapers/pricena');
+const { searchEmag } = require('./scrapers/emag');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -50,6 +52,10 @@ app.post('/api/search', async (req, res) => {
           siteResults = await searchIdealo(query);
         } else if (site === 'noon') {
           siteResults = await searchNoon(query);
+        } else if (site === 'pricena') {
+          siteResults = await searchPricena(query);
+        } else if (site === 'emag') {
+          siteResults = await searchEmag(query);
         } else if (site === 'ebay') {
           siteResults = await searchEbay(query);
         }
