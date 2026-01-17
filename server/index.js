@@ -14,6 +14,8 @@ const { searchEmag } = require('./scrapers/emag');
 const { searchToppreise } = require('./scrapers/toppreise');
 const { searchDigitec } = require('./scrapers/digitec');
 const { searchPazaruvaj } = require('./scrapers/pazaruvaj');
+const { searchTechnomarket } = require('./scrapers/technomarket');
+const { searchTechnopolis } = require('./scrapers/technopolis');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -156,6 +158,10 @@ async function runSearch(query, sites, options = {}) {
         siteResults = await withTimeout(searchDigitec(query), site);
       } else if (site === 'pazaruvaj') {
         siteResults = await withTimeout(searchPazaruvaj(query), site);
+      } else if (site === 'technomarket') {
+        siteResults = await withTimeout(searchTechnomarket(query), site);
+      } else if (site === 'technopolis') {
+        siteResults = await withTimeout(searchTechnopolis(query), site);
       } else if (site === 'ebay') {
         siteResults = await withTimeout(searchEbay(query), site);
       }

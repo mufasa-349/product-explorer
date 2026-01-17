@@ -102,7 +102,9 @@ function App() {
       label: 'Bulgaristan',
       sites: [
         { id: 'emag', label: 'eMAG.bg' },
-        { id: 'pazaruvaj', label: 'Pazaruvaj.com' }
+        { id: 'pazaruvaj', label: 'Pazaruvaj.com' },
+        { id: 'technomarket', label: 'Technomarket.bg' },
+        { id: 'technopolis', label: 'Technopolis.bg' }
       ]
     },
     {
@@ -126,6 +128,8 @@ function App() {
     toppreise: 10,
     digitec: 10,
     pazaruvaj: 10,
+    technomarket: 10,
+    technopolis: 10,
     ebay: 10
   };
 
@@ -460,11 +464,15 @@ function App() {
                                         ? 'eMAG.bg'
                                         : product.site === 'pazaruvaj'
                                           ? 'Pazaruvaj.com'
-                                          : product.site === 'toppreise'
-                                            ? 'Toppreise.ch'
-                                            : product.site === 'digitec'
-                                              ? 'Digitec.ch'
-                                              : 'eBay.com'}
+                                          : product.site === 'technomarket'
+                                            ? 'Technomarket.bg'
+                                            : product.site === 'technopolis'
+                                              ? 'Technopolis.bg'
+                                              : product.site === 'toppreise'
+                                                ? 'Toppreise.ch'
+                                                : product.site === 'digitec'
+                                                  ? 'Digitec.ch'
+                                                  : 'eBay.com'}
                         </span>
                         {(() => {
                           const priceInfo = formatPrice(product);
@@ -514,11 +522,15 @@ function App() {
                                   ? 'eMAG.bg'
                                   : result.site === 'pazaruvaj'
                                     ? 'Pazaruvaj.com'
-                                    : result.site === 'toppreise'
-                                      ? 'Toppreise.ch'
-                                      : result.site === 'digitec'
-                                        ? 'Digitec.ch'
-                                        : 'eBay.com'}: 
+                                    : result.site === 'technomarket'
+                                      ? 'Technomarket.bg'
+                                      : result.site === 'technopolis'
+                                        ? 'Technopolis.bg'
+                                        : result.site === 'toppreise'
+                                          ? 'Toppreise.ch'
+                                          : result.site === 'digitec'
+                                            ? 'Digitec.ch'
+                                            : 'eBay.com'}: 
                   </span>
                   {result.success ? (
                     <span className="status-success">
