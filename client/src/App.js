@@ -10,6 +10,25 @@ function App() {
   const [error, setError] = useState(null);
   const [currencyOverride, setCurrencyOverride] = useState('auto');
   const [imageFile, setImageFile] = useState(null);
+  const [imageNote, setImageNote] = useState('');
+  const handleImagePaste = (e) => {
+    const items = e.clipboardData?.items || [];
+    for (const item of items) {
+      if (item.type && item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          setImageFile(file);
+          setImageNote('Panodan görsel eklendi.');
+        }
+        break;
+      }
+    }
+  };
+
+  const getImagePreviewUrl = () => {
+    if (!imageFile) return null;
+    return URL.createObjectURL(imageFile);
+  };
 
   const countryGroups = [
     {
@@ -195,15 +214,41 @@ function App() {
                   {loading ? 'Aranıyor...' : 'Ara'}
                 </button>
               </div>
-              <div className="search-bar-container">
+              <div className="search-bar-container image-input-row">
                 <input
                   type="file"
                   accept="image/*"
                   onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                  onPaste={handleImagePaste}
                   className="search-bar"
                   disabled={loading}
                 />
+                <span className="image-optional-note">Opsiyonel</span>
               </div>
+              <div className="image-help-text">
+                Görsel ekleme opsiyoneldir. Dosya seçebilir veya panodan yapıştırabilirsiniz.
+              </div>
+              {imageFile && (
+                <div className="image-preview">
+                  <div className="image-preview-title">Referans görsel</div>
+                  <button
+                    type="button"
+                    className="image-remove-button"
+                    onClick={() => {
+                      setImageFile(null);
+                      setImageNote('');
+                    }}
+                    disabled={loading}
+                    aria-label="Görseli kaldır"
+                    title="Görseli kaldır"
+                  >
+                    <span className="image-remove-icon">×</span>
+                    <span>Görseli kaldır</span>
+                  </button>
+                  <img src={getImagePreviewUrl()} alt="Referans görsel" />
+                </div>
+              )}
+              {imageNote && <div className="image-note">{imageNote}</div>}
               <div className="currency-row">
                 <label className="site-checkbox">
                   <span>Para birimi:</span>
