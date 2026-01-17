@@ -15,6 +15,7 @@ function App() {
   const [logs, setLogs] = useState([]);
   const [toastMessage, setToastMessage] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
+  const [sortOption, setSortOption] = useState('default');
   useEffect(() => {
     if (!('Notification' in window)) return;
     if (Notification.permission === 'default') {
@@ -290,6 +291,22 @@ function App() {
     return sites.reduce((sum, site) => sum + (siteEstimates[site] || 8), 0);
   };
 
+  const getSortedProducts = (products) => {
+    if (!Array.isArray(products)) return [];
+    if (sortOption === 'price_asc') {
+      return [...products].sort((a, b) => {
+        const aPrice = parseFloat(a?.price);
+        const bPrice = parseFloat(b?.price);
+        const safeA = Number.isFinite(aPrice) ? aPrice : Number.POSITIVE_INFINITY;
+        const safeB = Number.isFinite(bPrice) ? bPrice : Number.POSITIVE_INFINITY;
+        return safeA - safeB;
+      });
+    }
+    return products;
+  };
+
+  const displayedProducts = results ? getSortedProducts(results.sortedProducts) : [];
+
   return (
     <div className="App">
       <div className="container">
@@ -368,6 +385,20 @@ function App() {
                   <option value="TRY">TRY</option>
                 </select>
               </div>
+              <div className="currency-row">
+                <label className="site-checkbox">
+                  <span>Gelişmiş sıralama:</span>
+                </label>
+                <select
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value)}
+                  disabled={loading}
+                  className="currency-select"
+                >
+                  <option value="default">Varsayılan</option>
+                  <option value="price_asc">Fiyata göre artan</option>
+                </select>
+              </div>
               {!loading && (
                 <div className="search-estimate">
                   Tahmini bekleme süresi: ~{estimateWaitSeconds(selectedSites)} sn
@@ -440,9 +471,9 @@ function App() {
               <div className="warning-message">{results.imageWarning}</div>
             )}
 
-            {results.sortedProducts.length > 0 ? (
+            {displayedProducts.length > 0 ? (
               <div className="products-list">
-                {results.sortedProducts.map((product, index) => (
+                {displayedProducts.map((product, index) => (
                   <div key={index} className="product-card">
                     {product.image && (
                       <img 

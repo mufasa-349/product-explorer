@@ -6,8 +6,8 @@ async function searchEbay(query) {
     console.log(`[EBAY] Arama başlatılıyor: "${query}"`);
     
     browser = await puppeteer.launch({
-      headless: false,
-      slowMo: 120,
+      headless: true,
+      //slowMo: 120,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
