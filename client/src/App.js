@@ -108,7 +108,8 @@ function App() {
       id: 'ch',
       label: 'İsviçre',
       sites: [
-        { id: 'toppreise', label: 'Toppreise.ch' }
+        { id: 'toppreise', label: 'Toppreise.ch' },
+        { id: 'digitec', label: 'Digitec.ch' }
       ]
     }
   ];
@@ -122,6 +123,7 @@ function App() {
     pricena: 10,
     emag: 12,
     toppreise: 10,
+    digitec: 10,
     ebay: 10
   };
 
@@ -456,7 +458,9 @@ function App() {
                                         ? 'eMAG.bg'
                                         : product.site === 'toppreise'
                                           ? 'Toppreise.ch'
-                                          : 'eBay.com'}
+                                          : product.site === 'digitec'
+                                            ? 'Digitec.ch'
+                                            : 'eBay.com'}
                         </span>
                         {(() => {
                           const priceInfo = formatPrice(product);
@@ -504,8 +508,10 @@ function App() {
                                 ? 'Pricena.com'
                                 : result.site === 'emag'
                                   ? 'eMAG.bg'
-                                  : result.site === 'toppreise'
-                                    ? 'Toppreise.ch'
+                                : result.site === 'toppreise'
+                                  ? 'Toppreise.ch'
+                                  : result.site === 'digitec'
+                                    ? 'Digitec.ch'
                                     : 'eBay.com'}: 
                   </span>
                   {result.success ? (

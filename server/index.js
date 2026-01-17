@@ -12,6 +12,7 @@ const { searchNoon } = require('./scrapers/noon');
 const { searchPricena } = require('./scrapers/pricena');
 const { searchEmag } = require('./scrapers/emag');
 const { searchToppreise } = require('./scrapers/toppreise');
+const { searchDigitec } = require('./scrapers/digitec');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -150,6 +151,8 @@ async function runSearch(query, sites, options = {}) {
         siteResults = await withTimeout(searchEmag(query), site);
       } else if (site === 'toppreise') {
         siteResults = await withTimeout(searchToppreise(query), site);
+      } else if (site === 'digitec') {
+        siteResults = await withTimeout(searchDigitec(query), site);
       } else if (site === 'ebay') {
         siteResults = await withTimeout(searchEbay(query), site);
       }

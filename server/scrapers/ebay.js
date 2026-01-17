@@ -6,7 +6,8 @@ async function searchEbay(query) {
     console.log(`[EBAY] Arama başlatılıyor: "${query}"`);
     
     browser = await puppeteer.launch({
-      headless: true,
+      headless: false,
+      slowMo: 120,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
@@ -24,7 +25,7 @@ async function searchEbay(query) {
       timeout: 30000 
     });
 
-    console.log(`[EBAY] Sayfa yüklendi, search bar kontrol ediliyor...`);
+    console.log(`[EBAY] Sayfa yüklendi, sonuçlar hazırlanıyor...`);
     
     // Sayfanın yüklenmesini bekle
     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -33,54 +34,64 @@ async function searchEbay(query) {
     console.log(`[EBAY] Ürün elementleri aranıyor...`);
     const products = await page.evaluate(() => {
       const items = [];
-      const productElements = document.querySelectorAll('.s-item, .srp-results .s-item');
+      const nonSponsoredItems = [];
+      const sponsoredItems = [];
+      const productElements = document.querySelectorAll('li.s-card');
 
       console.log(`[EBAY] Bulunan element sayısı: ${productElements.length}`);
 
-      productElements.forEach((element, index) => {
-        if (index === 0 || index >= 11) return; // İlk eleman genelde reklam, sonraki 10 ürünü al
+      productElements.forEach((element) => {
+        if (nonSponsoredItems.length >= 4 && sponsoredItems.length >= 1) return;
 
         try {
-          // Ürün adı
-          const titleElement = element.querySelector('.s-item__title, .s-item__title--tagblock');
+          const titleElement = element.querySelector('.s-card__title .su-styled-text.primary, .s-card__title .su-styled-text');
           const title = titleElement ? titleElement.textContent.trim() : '';
+          if (!title) return;
 
-          // Fiyat - farklı formatları dene
-          const priceElement = element.querySelector('.s-item__price, .s-item__detail--primary');
+          const priceElement = element.querySelector('.s-card__price, .s-card__attribute-row .s-card__price');
           let price = '';
           if (priceElement) {
             const priceText = priceElement.textContent || '';
-            // "$123.45" formatından sadece sayıları al
             price = priceText.trim().replace(/[^0-9.]/g, '');
           }
 
-          // Link
-          const linkElement = element.querySelector('.s-item__link, a.s-item__link');
+          const linkElement = element.querySelector('a.s-card__link');
           const link = linkElement ? linkElement.getAttribute('href') : '';
 
-          // Resim
-          const imageElement = element.querySelector('.s-item__image img, .s-item__image-wrapper img');
+          const imageElement = element.querySelector('img.s-card__image, img');
           const image = imageElement ? (imageElement.getAttribute('src') || imageElement.getAttribute('data-src')) : '';
 
-          if (title && link && title !== 'Shop on eBay' && !title.includes('Shop on eBay')) {
-            items.push({
+          const sponsoredElement = element.querySelector('.s-card__footer [aria-hidden="true"], .s-card__footer [aria-label*="Sponsored"]');
+          const isSponsored = Boolean(sponsoredElement) || (element.textContent || '').toLowerCase().includes('sponsored');
+
+          if (title && link) {
+            const product = {
               title,
               price: price || 'Fiyat bulunamadı',
+              currency: 'USD',
               link,
-              image
-            });
+              image,
+              isSponsored
+            };
+            if (isSponsored) {
+              if (sponsoredItems.length < 1) sponsoredItems.push(product);
+            } else {
+              if (nonSponsoredItems.length < 4) nonSponsoredItems.push(product);
+            }
           }
         } catch (error) {
           console.error('Ürün parse hatası:', error);
         }
       });
 
+      items.push(...nonSponsoredItems, ...sponsoredItems);
       return items;
     });
     
     console.log(`[EBAY] ${products.length} ürün bulundu`);
 
-    await browser.close();
+    // Debug için tarayıcıyı açık bırak
+    // await browser.close();
 
     if (products.length === 0) {
       console.log(`[EBAY] Ürün bulunamadı`);
@@ -90,9 +101,10 @@ async function searchEbay(query) {
     console.log(`[EBAY] Arama tamamlandı, ${products.length} ürün döndürülüyor`);
     return products;
   } catch (error) {
-    if (browser) {
-      await browser.close();
-    }
+    // Debug için tarayıcıyı açık bırak
+    // if (browser) {
+    //   await browser.close();
+    // }
     
     // Erişim engeli kontrolü
     if (error.message.includes('timeout') || error.message.includes('Navigation')) {
