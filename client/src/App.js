@@ -103,6 +103,13 @@ function App() {
       sites: [
         { id: 'emag', label: 'eMAG.bg' }
       ]
+    },
+    {
+      id: 'ch',
+      label: 'İsviçre',
+      sites: [
+        { id: 'toppreise', label: 'Toppreise.ch' }
+      ]
     }
   ];
 
@@ -114,6 +121,7 @@ function App() {
     noon: 12,
     pricena: 10,
     emag: 12,
+    toppreise: 10,
     ebay: 10
   };
 
@@ -236,6 +244,12 @@ function App() {
         displayPrice = originalNum.toFixed(2);
         displayCurrency = 'EUR';
       }
+    } else if (currencyOverride === 'CHF' && originalCurrency === 'CHF' && originalPrice) {
+      const originalNum = parseFloat(originalPrice);
+      if (!isNaN(originalNum)) {
+        displayPrice = originalNum.toFixed(2);
+        displayCurrency = 'CHF';
+      }
     } else if (currencyOverride === 'USD' && usdPrice) {
       const usdNum = parseFloat(usdPrice);
       if (!isNaN(usdNum)) {
@@ -334,6 +348,7 @@ function App() {
                   <option value="USD">USD ($)</option>
                   <option value="AED">AED</option>
                   <option value="EUR">EUR</option>
+                  <option value="CHF">CHF</option>
                   <option value="TRY">TRY</option>
                 </select>
               </div>
@@ -439,7 +454,9 @@ function App() {
                                       ? 'Pricena.com'
                                       : product.site === 'emag'
                                         ? 'eMAG.bg'
-                                : 'eBay.com'}
+                                        : product.site === 'toppreise'
+                                          ? 'Toppreise.ch'
+                                          : 'eBay.com'}
                         </span>
                         {(() => {
                           const priceInfo = formatPrice(product);
@@ -487,7 +504,9 @@ function App() {
                                 ? 'Pricena.com'
                                 : result.site === 'emag'
                                   ? 'eMAG.bg'
-                          : 'eBay.com'}: 
+                                  : result.site === 'toppreise'
+                                    ? 'Toppreise.ch'
+                                    : 'eBay.com'}: 
                   </span>
                   {result.success ? (
                     <span className="status-success">

@@ -11,12 +11,14 @@ const { searchIdealo } = require('./scrapers/idealo');
 const { searchNoon } = require('./scrapers/noon');
 const { searchPricena } = require('./scrapers/pricena');
 const { searchEmag } = require('./scrapers/emag');
+const { searchToppreise } = require('./scrapers/toppreise');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
 const AED_TO_USD_RATE = parseFloat(process.env.AED_TO_USD_RATE) || 0.2723;
 const EUR_TO_TRY_RATE = parseFloat(process.env.EUR_TO_TRY_RATE) || 51.0;
 const USD_TO_TRY_RATE = parseFloat(process.env.USD_TO_TRY_RATE) || 44.0;
+const CHF_TO_TRY_RATE = parseFloat(process.env.CHF_TO_TRY_RATE) || 53.8;
 
 // CORS ayarları
 app.use(cors({
@@ -146,6 +148,8 @@ async function runSearch(query, sites, options = {}) {
         siteResults = await withTimeout(searchPricena(query), site);
       } else if (site === 'emag') {
         siteResults = await withTimeout(searchEmag(query), site);
+      } else if (site === 'toppreise') {
+        siteResults = await withTimeout(searchToppreise(query), site);
       } else if (site === 'ebay') {
         siteResults = await withTimeout(searchEbay(query), site);
       }
@@ -193,6 +197,18 @@ async function runSearch(query, sites, options = {}) {
           const basePrice = parseFloat(product.price);
           if (!isNaN(basePrice)) {
             const tryPrice = Math.ceil((basePrice * EUR_TO_TRY_RATE) / 100) * 100;
+            normalizedProduct = {
+              ...product,
+              price: tryPrice.toFixed(0),
+              currency: 'TRY',
+              originalPrice: product.price,
+              originalCurrency: product.currency
+            };
+          }
+        } else if (product.currency && product.currency.toUpperCase() === 'CHF') {
+          const basePrice = parseFloat(product.price);
+          if (!isNaN(basePrice)) {
+            const tryPrice = Math.ceil((basePrice * CHF_TO_TRY_RATE) / 100) * 100;
             normalizedProduct = {
               ...product,
               price: tryPrice.toFixed(0),
