@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const multer = require('multer');
+const Jimp = require('jimp');
 const { searchAmazon } = require('./scrapers/amazon');
 const { searchAmazonAE } = require('./scrapers/amazon-ae');
 const { searchAmazonDE } = require('./scrapers/amazon-de');
@@ -28,9 +30,66 @@ app.options('*', cors());
 
 app.use(express.json());
 
-app.post('/api/search', async (req, res) => {
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }
+});
+
+async function computeImageHash(buffer) {
+  const image = await Jimp.read(buffer);
+  image.resize(8, 8).grayscale();
+  const pixels = [];
+  for (let y = 0; y < 8; y++) {
+    for (let x = 0; x < 8; x++) {
+      const { r } = Jimp.intToRGBA(image.getPixelColor(x, y));
+      pixels.push(r);
+    }
+  }
+  const avg = pixels.reduce((sum, val) => sum + val, 0) / pixels.length;
+  return pixels.map(val => (val >= avg ? '1' : '0')).join('');
+}
+
+function hammingDistance(hashA, hashB) {
+  if (!hashA || !hashB || hashA.length !== hashB.length) return null;
+  let diff = 0;
+  for (let i = 0; i < hashA.length; i++) {
+    if (hashA[i] !== hashB[i]) diff += 1;
+  }
+  return diff;
+}
+
+async function fetchImageBuffer(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Image fetch failed');
+  const arrayBuffer = await response.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
+
+async function addImageSimilarity(allProducts, inputImageBuffer) {
+  if (!inputImageBuffer) return;
+  const inputHash = await computeImageHash(inputImageBuffer);
+  await Promise.all(allProducts.map(async (product) => {
+    if (!product.image) return;
+    try {
+      const imageBuffer = await fetchImageBuffer(product.image);
+      const productHash = await computeImageHash(imageBuffer);
+      const distance = hammingDistance(inputHash, productHash);
+      if (distance !== null) {
+        const similarity = Math.round((1 - distance / inputHash.length) * 100);
+        product.imageSimilarity = similarity;
+      }
+    } catch (e) {
+      // Görsel alınamazsa skor ekleme
+    }
+  }));
+}
+
+app.post('/api/search', upload.single('image'), async (req, res) => {
   try {
-    const { query, sites } = req.body;
+    const rawQuery = req.body.query;
+    const rawSites = req.body.sites;
+    const query = typeof rawQuery === 'string' ? rawQuery : '';
+    const sites = typeof rawSites === 'string' ? JSON.parse(rawSites) : rawSites;
 
     if (!query || !sites || sites.length === 0) {
       return res.status(400).json({ error: 'Query ve en az bir site seçilmelidir' });
@@ -128,7 +187,9 @@ app.post('/api/search', async (req, res) => {
       }
     });
 
-    // Önce marka eşleşmesi, sonra kapasite/ifade eşleşmesi, yakınsa ucuz olan öne gelsin
+    await addImageSimilarity(allProducts, req.file?.buffer);
+
+    // Önce görsel benzerliği, sonra marka eşleşmesi, kapasite/ifade eşleşmesi, yakınsa ucuz olan öne gelsin
     const normalizedQuery = (query || '').toLowerCase().trim().replace(/\s+/g, ' ');
     const brandToken = normalizedQuery ? normalizedQuery.split(' ')[0] : null;
     const capacityMatch = normalizedQuery.match(/(\d+)\s*tb/);
@@ -162,8 +223,15 @@ app.post('/api/search', async (req, res) => {
 
       const sponsoredA = Boolean(a.isSponsored);
       const sponsoredB = Boolean(b.isSponsored);
+      const imageScoreA = typeof a.imageSimilarity === 'number' ? a.imageSimilarity : null;
+      const imageScoreB = typeof b.imageSimilarity === 'number' ? b.imageSimilarity : null;
 
       if (sponsoredA !== sponsoredB) return sponsoredA ? 1 : -1;
+      if (imageScoreA !== null || imageScoreB !== null) {
+        const scoreA = imageScoreA ?? -1;
+        const scoreB = imageScoreB ?? -1;
+        if (scoreA !== scoreB) return scoreB - scoreA;
+      }
       if (brandMatchA !== brandMatchB) return brandMatchA ? -1 : 1;
       if (capacityMatchA !== capacityMatchB) return capacityMatchA ? -1 : 1;
       if (exactPhraseA !== exactPhraseB) return exactPhraseA ? -1 : 1;

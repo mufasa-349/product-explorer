@@ -9,6 +9,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currencyOverride, setCurrencyOverride] = useState('auto');
+  const [imageFile, setImageFile] = useState(null);
 
   const siteEstimates = {
     amazon: 25,
@@ -47,9 +48,14 @@ function App() {
     setResults(null);
 
     try {
-      const response = await axios.post('http://localhost:5001/api/search', {
-        query: query.trim(),
-        sites: selectedSites
+      const formData = new FormData();
+      formData.append('query', query.trim());
+      formData.append('sites', JSON.stringify(selectedSites));
+      if (imageFile) {
+        formData.append('image', imageFile);
+      }
+      const response = await axios.post('http://localhost:5001/api/search', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
 
       setResults(response.data);
@@ -139,6 +145,15 @@ function App() {
             >
               {loading ? 'Aranıyor...' : 'Ara'}
             </button>
+          </div>
+          <div className="search-bar-container">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+              className="search-bar"
+              disabled={loading}
+            />
           </div>
           {!loading && (
             <div className="search-estimate">
