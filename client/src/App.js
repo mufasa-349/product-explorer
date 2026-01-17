@@ -11,6 +11,8 @@ function App() {
   const [currencyOverride, setCurrencyOverride] = useState('auto');
   const [imageFile, setImageFile] = useState(null);
   const [imageNote, setImageNote] = useState('');
+  const [progress, setProgress] = useState(null);
+  const [logs, setLogs] = useState([]);
   const handleImagePaste = (e) => {
     const items = e.clipboardData?.items || [];
     for (const item of items) {
@@ -112,22 +114,49 @@ function App() {
     setLoading(true);
     setError(null);
     setResults(null);
+    setProgress(null);
+    setLogs([]);
 
     try {
-      const formData = new FormData();
-      formData.append('query', query.trim());
-      formData.append('sites', JSON.stringify(selectedSites));
+      let imageToken = '';
       if (imageFile) {
-        formData.append('image', imageFile);
+        const uploadData = new FormData();
+        uploadData.append('image', imageFile);
+        const uploadRes = await axios.post('http://localhost:5001/api/image/upload', uploadData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        imageToken = uploadRes.data?.token || '';
       }
-      const response = await axios.post('http://localhost:5001/api/search', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+
+      const queryParam = encodeURIComponent(query.trim());
+      const sitesParam = encodeURIComponent(JSON.stringify(selectedSites));
+      const imageParam = imageToken ? `&imageToken=${encodeURIComponent(imageToken)}` : '';
+      const eventSource = new EventSource(`http://localhost:5001/api/search/stream?query=${queryParam}&sites=${sitesParam}${imageParam}`);
+
+      eventSource.addEventListener('log', (event) => {
+        const data = JSON.parse(event.data);
+        setLogs((prev) => [...prev, data.message]);
       });
 
-      setResults(response.data);
+      eventSource.addEventListener('progress', (event) => {
+        const data = JSON.parse(event.data);
+        setProgress(data);
+      });
+
+      eventSource.addEventListener('done', (event) => {
+        const data = JSON.parse(event.data);
+        setResults(data);
+        setLoading(false);
+        eventSource.close();
+      });
+
+      eventSource.addEventListener('error', (event) => {
+        setError('Arama sırasında bir hata oluştu');
+        setLoading(false);
+        eventSource.close();
+      });
     } catch (err) {
       setError(err.response?.data?.error || 'Arama sırasında bir hata oluştu');
-    } finally {
       setLoading(false);
     }
   };
@@ -269,6 +298,28 @@ function App() {
               {!loading && (
                 <div className="search-estimate">
                   Tahmini bekleme süresi: ~{estimateWaitSeconds(selectedSites)} sn
+                </div>
+              )}
+              {loading && progress && (
+                <div className="progress-block">
+                  <div className="progress-text">
+                    {progress.visited}/{progress.total} site gezildi, {progress.products} ürün bulundu
+                  </div>
+                  <div className="progress-bar">
+                    <div
+                      className="progress-bar-fill"
+                      style={{ width: `${Math.round((progress.visited / progress.total) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+              {loading && logs.length > 0 && (
+                <div className="log-panel">
+                  {logs.slice(-10).map((log, index) => (
+                    <div key={`${log}-${index}`} className="log-line">
+                      {log}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
