@@ -99,6 +99,13 @@ function App() {
       ]
     },
     {
+      id: 'uk',
+      label: 'İngiltere',
+      sites: [
+        { id: 'amazon_uk', label: 'Amazon.co.uk' }
+      ]
+    },
+    {
       id: 'bg',
       label: 'Bulgaristan',
       sites: [
@@ -129,6 +136,7 @@ function App() {
     amazon: 25,
     amazon_ae: 20,
     amazon_de: 20,
+    amazon_uk: 20,
     idealo: 10,
     noon: 12,
     pricena: 10,
@@ -493,27 +501,29 @@ function App() {
                               ? 'Amazon.ae'
                               : product.site === 'amazon_de'
                                 ? 'Amazon.de'
-                                : product.site === 'idealo'
-                                  ? 'Idealo.de'
-                                  : product.site === 'noon'
-                                    ? 'Noon.com'
-                                    : product.site === 'pricena'
-                                      ? 'Pricena.com'
-                                      : product.site === 'emag'
-                                        ? 'eMAG.bg'
-                                        : product.site === 'pazaruvaj'
-                                          ? 'Pazaruvaj.com'
-                                          : product.site === 'technomarket'
-                                            ? 'Technomarket.bg'
-                                            : product.site === 'technopolis'
-                                              ? 'Technopolis.bg'
-                                              : product.site === 'skroutz'
-                                                ? 'Skroutz.gr'
-                                                : product.site === 'toppreise'
-                                                  ? 'Toppreise.ch'
-                                                  : product.site === 'digitec'
-                                                    ? 'Digitec.ch'
-                                                    : 'eBay.com'}
+                                : product.site === 'amazon_uk'
+                                  ? 'Amazon.co.uk'
+                                  : product.site === 'idealo'
+                                    ? 'Idealo.de'
+                                    : product.site === 'noon'
+                                      ? 'Noon.com'
+                                      : product.site === 'pricena'
+                                        ? 'Pricena.com'
+                                        : product.site === 'emag'
+                                          ? 'eMAG.bg'
+                                          : product.site === 'pazaruvaj'
+                                            ? 'Pazaruvaj.com'
+                                            : product.site === 'technomarket'
+                                              ? 'Technomarket.bg'
+                                              : product.site === 'technopolis'
+                                                ? 'Technopolis.bg'
+                                                : product.site === 'skroutz'
+                                                  ? 'Skroutz.gr'
+                                                  : product.site === 'toppreise'
+                                                    ? 'Toppreise.ch'
+                                                    : product.site === 'digitec'
+                                                      ? 'Digitec.ch'
+                                                      : 'eBay.com'}
                         </span>
                         {(() => {
                           const priceInfo = formatPrice(product);
@@ -553,27 +563,29 @@ function App() {
                         ? 'Amazon.ae'
                         : result.site === 'amazon_de'
                           ? 'Amazon.de'
-                          : result.site === 'idealo'
-                            ? 'Idealo.de'
-                            : result.site === 'noon'
-                              ? 'Noon.com'
-                              : result.site === 'pricena'
-                                ? 'Pricena.com'
-                                : result.site === 'emag'
-                                  ? 'eMAG.bg'
-                                  : result.site === 'pazaruvaj'
-                                    ? 'Pazaruvaj.com'
-                                    : result.site === 'technomarket'
-                                      ? 'Technomarket.bg'
-                                      : result.site === 'technopolis'
-                                        ? 'Technopolis.bg'
-                                        : result.site === 'skroutz'
-                                          ? 'Skroutz.gr'
-                                          : result.site === 'toppreise'
-                                            ? 'Toppreise.ch'
-                                            : result.site === 'digitec'
-                                              ? 'Digitec.ch'
-                                              : 'eBay.com'}: 
+                          : result.site === 'amazon_uk'
+                            ? 'Amazon.co.uk'
+                            : result.site === 'idealo'
+                              ? 'Idealo.de'
+                              : result.site === 'noon'
+                                ? 'Noon.com'
+                                : result.site === 'pricena'
+                                  ? 'Pricena.com'
+                                  : result.site === 'emag'
+                                    ? 'eMAG.bg'
+                                    : result.site === 'pazaruvaj'
+                                      ? 'Pazaruvaj.com'
+                                      : result.site === 'technomarket'
+                                        ? 'Technomarket.bg'
+                                        : result.site === 'technopolis'
+                                          ? 'Technopolis.bg'
+                                          : result.site === 'skroutz'
+                                            ? 'Skroutz.gr'
+                                            : result.site === 'toppreise'
+                                              ? 'Toppreise.ch'
+                                              : result.site === 'digitec'
+                                                ? 'Digitec.ch'
+                                                : 'eBay.com'}: 
                   </span>
                   {result.success ? (
                     <span className="status-success">

@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const { searchAmazon } = require('./scrapers/amazon');
 const { searchAmazonAE } = require('./scrapers/amazon-ae');
 const { searchAmazonDE } = require('./scrapers/amazon-de');
+const { searchAmazonUK } = require('./scrapers/amazon-uk');
 const { searchEbay } = require('./scrapers/ebay');
 const { searchIdealo } = require('./scrapers/idealo');
 const { searchNoon } = require('./scrapers/noon');
@@ -145,6 +146,8 @@ async function runSearch(query, sites, options = {}) {
         siteResults = await withTimeout(searchAmazonAE(query), site);
       } else if (site === 'amazon_de') {
         siteResults = await withTimeout(searchAmazonDE(query), site);
+      } else if (site === 'amazon_uk') {
+        siteResults = await withTimeout(searchAmazonUK(query), site);
       } else if (site === 'idealo') {
         siteResults = await withTimeout(searchIdealo(query), site);
       } else if (site === 'noon') {
