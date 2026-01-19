@@ -106,6 +106,13 @@ function App() {
       ]
     },
     {
+      id: 'fr',
+      label: 'Fransa',
+      sites: [
+        { id: 'amazon_fr', label: 'Amazon.fr' }
+      ]
+    },
+    {
       id: 'tr',
       label: 'Türkiye',
       sites: [
@@ -152,6 +159,7 @@ function App() {
     amazon_ae: 20,
     amazon_de: 20,
     amazon_uk: 20,
+    amazon_fr: 20,
     idealo: 10,
     noon: 12,
     pricena: 10,
@@ -548,6 +556,8 @@ function App() {
                                 ? 'Amazon.de'
                                 : product.site === 'amazon_uk'
                                   ? 'Amazon.co.uk'
+                                  : product.site === 'amazon_fr'
+                                    ? 'Amazon.fr'
                                   : product.site === 'akakce'
                                     ? 'Akakce.com'
                                   : product.site === 'idealo'
