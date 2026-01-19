@@ -123,6 +123,13 @@ function App() {
       ]
     },
     {
+      id: 'ro',
+      label: 'Romanya',
+      sites: [
+        { id: 'emag_ro', label: 'eMAG.ro' }
+      ]
+    },
+    {
       id: 'ch',
       label: 'İsviçre',
       sites: [
@@ -149,6 +156,7 @@ function App() {
     noon: 12,
     pricena: 10,
     emag: 12,
+    emag_ro: 12,
     toppreise: 10,
     digitec: 10,
     pazaruvaj: 10,
@@ -550,8 +558,10 @@ function App() {
                                         ? 'Pricena.com'
                                         : product.site === 'emag'
                                           ? 'eMAG.bg'
-                                          : product.site === 'pazaruvaj'
-                                            ? 'Pazaruvaj.com'
+                                          : product.site === 'emag_ro'
+                                            ? 'eMAG.ro'
+                                            : product.site === 'pazaruvaj'
+                                              ? 'Pazaruvaj.com'
                                             : product.site === 'technomarket'
                                               ? 'Technomarket.bg'
                                               : product.site === 'technopolis'
