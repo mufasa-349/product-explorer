@@ -315,8 +315,7 @@ async function searchAmazonDE(query) {
 
     console.log(`[AMAZON.DE] ${products.length} eşleşen ürün bulundu`);
 
-    // Debug için tarayıcıyı açık bırak
-    // await browser.close();
+    await browser.close();
 
     if (products.length === 0) {
       console.log(`[AMAZON.DE] Ürün bulunamadı`);
@@ -329,10 +328,9 @@ async function searchAmazonDE(query) {
       currency: normalizeCurrency(product.currency)
     }));
   } catch (error) {
-    // Debug için tarayıcıyı açık bırak
-    // if (browser) {
-    //   await browser.close();
-    // }
+    if (browser) {
+      await browser.close();
+    }
 
     if (error.message.includes('timeout') || error.message.includes('Navigation')) {
       throw new Error('Siteye erişilemedi');

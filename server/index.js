@@ -34,6 +34,8 @@ const EUR_TO_TRY_RATE = parseFloat(process.env.EUR_TO_TRY_RATE) || 51.0;
 const USD_TO_TRY_RATE = parseFloat(process.env.USD_TO_TRY_RATE) || 44.0;
 const CHF_TO_TRY_RATE = parseFloat(process.env.CHF_TO_TRY_RATE) || 53.8;
 const RON_TO_TRY_RATE = parseFloat(process.env.RON_TO_TRY_RATE) || 9.9;
+const MAX_CONCURRENT_SEARCHES = parseInt(process.env.MAX_CONCURRENT_SEARCHES, 10) || 1;
+let activeSearches = 0;
 
 // CORS ayarları
 app.use(cors({
@@ -384,9 +386,19 @@ app.post('/api/search', upload.single('image'), async (req, res) => {
       return res.status(400).json({ error: 'Query ve en az bir site seçilmelidir' });
     }
 
-    const searchResult = await runSearch(query, sites, {
-      imageBuffer: req.file?.buffer
-    });
+    if (activeSearches >= MAX_CONCURRENT_SEARCHES) {
+      return res.status(429).json({ error: 'Sunucu şu anda meşgul, lütfen biraz sonra tekrar deneyin' });
+    }
+
+    activeSearches += 1;
+    let searchResult;
+    try {
+      searchResult = await runSearch(query, sites, {
+        imageBuffer: req.file?.buffer
+      });
+    } finally {
+      activeSearches = Math.max(activeSearches - 1, 0);
+    }
 
     res.json(searchResult);
   } catch (error) {
@@ -415,10 +427,25 @@ app.get('/api/search/stream', async (req, res) => {
     return res.status(400).json({ error: 'Query ve en az bir site seçilmelidir' });
   }
 
+  if (activeSearches >= MAX_CONCURRENT_SEARCHES) {
+    return res.status(429).json({ error: 'Sunucu şu anda meşgul, lütfen biraz sonra tekrar deneyin' });
+  }
+
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
+
+  activeSearches += 1;
+  let finalized = false;
+  const finalize = () => {
+    if (finalized) return;
+    finalized = true;
+    activeSearches = Math.max(activeSearches - 1, 0);
+  };
+  res.on('close', () => {
+    finalize();
+  });
 
   const sendEvent = (event, data) => {
     res.write(`event: ${event}\n`);
@@ -435,9 +462,11 @@ app.get('/api/search/stream', async (req, res) => {
 
     sendEvent('done', searchResult);
     res.end();
+    finalize();
   } catch (error) {
     sendEvent('error', { message: error.message });
     res.end();
+    finalize();
   }
 });
 

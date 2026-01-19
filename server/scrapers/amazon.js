@@ -355,8 +355,7 @@ async function searchAmazon(query) {
     
     console.log(`[AMAZON] ${products.length} eşleşen ürün bulundu`);
 
-    // Debug için tarayıcıyı açık bırak
-    // await browser.close();
+    await browser.close();
 
     if (products.length === 0) {
       console.log(`[AMAZON] Ürün bulunamadı`);
@@ -366,10 +365,9 @@ async function searchAmazon(query) {
     console.log(`[AMAZON] Arama tamamlandı, ${products.length} ürün döndürülüyor`);
     return products;
   } catch (error) {
-    // Debug için tarayıcıyı açık bırak
-    // if (browser) {
-    //   await browser.close();
-    // }
+    if (browser) {
+      await browser.close();
+    }
     
     // Erişim engeli kontrolü
     if (error.message.includes('timeout') || error.message.includes('Navigation')) {
