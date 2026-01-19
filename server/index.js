@@ -8,6 +8,7 @@ const { searchAmazonAE } = require('./scrapers/amazon-ae');
 const { searchAmazonDE } = require('./scrapers/amazon-de');
 const { searchAmazonUK } = require('./scrapers/amazon-uk');
 const { searchAmazonFR } = require('./scrapers/amazon-fr');
+const { searchAmazonIT } = require('./scrapers/amazon-it');
 const { searchEbay } = require('./scrapers/ebay');
 const { searchIdealo } = require('./scrapers/idealo');
 const { searchNoon } = require('./scrapers/noon');
@@ -154,6 +155,8 @@ async function runSearch(query, sites, options = {}) {
         siteResults = await withTimeout(searchAmazonUK(query), site);
       } else if (site === 'amazon_fr') {
         siteResults = await withTimeout(searchAmazonFR(query), site);
+      } else if (site === 'amazon_it') {
+        siteResults = await withTimeout(searchAmazonIT(query), site);
       } else if (site === 'idealo') {
         siteResults = await withTimeout(searchIdealo(query), site);
       } else if (site === 'noon') {
