@@ -120,6 +120,13 @@ function App() {
       ]
     },
     {
+      id: 'nl',
+      label: 'Hollanda',
+      sites: [
+        { id: 'amazon_nl', label: 'Amazon.nl' }
+      ]
+    },
+    {
       id: 'tr',
       label: 'Türkiye',
       sites: [
@@ -168,6 +175,7 @@ function App() {
     amazon_uk: 20,
     amazon_fr: 20,
     amazon_it: 20,
+    amazon_nl: 20,
     idealo: 10,
     noon: 12,
     pricena: 10,
@@ -568,6 +576,8 @@ function App() {
                                     ? 'Amazon.fr'
                                     : product.site === 'amazon_it'
                                       ? 'Amazon.it'
+                                        : product.site === 'amazon_nl'
+                                          ? 'Amazon.nl'
                                   : product.site === 'akakce'
                                     ? 'Akakce.com'
                                   : product.site === 'idealo'
