@@ -131,6 +131,7 @@ async function runSearch(query, sites, options = {}) {
   };
   const onLog = options.onLog || ((message) => logs.push(message));
   const onProgress = options.onProgress || ((data) => Object.assign(progress, data));
+  const emitProgress = (extra = {}) => onProgress({ ...progress, ...extra });
   const SITE_TIMEOUT_MS = 25000;
 
   const withTimeout = (promise, site) => {
@@ -147,6 +148,7 @@ async function runSearch(query, sites, options = {}) {
 
   for (const site of sites) {
     try {
+      emitProgress({ currentSite: site });
       onLog(`[${site.toUpperCase()}] Arama başlatılıyor`);
       let siteResults = [];
       if (site === 'amazon') {
@@ -215,7 +217,7 @@ async function runSearch(query, sites, options = {}) {
 
     progress.visited += 1;
     progress.products = results.reduce((sum, result) => sum + (result.products?.length || 0), 0);
-    onProgress({ ...progress });
+    emitProgress({ currentSite: site });
   }
 
   // Tüm ürünleri birleştir ve fiyatına göre sırala

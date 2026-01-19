@@ -358,6 +358,33 @@ function App() {
     return sites.reduce((sum, site) => sum + (siteEstimates[site] || 8), 0);
   };
 
+  const getSiteLabel = (siteId) => {
+    if (!siteId) return '';
+    if (siteId === 'amazon') return 'Amazon.com';
+    if (siteId === 'amazon_ae') return 'Amazon.ae';
+    if (siteId === 'amazon_de') return 'Amazon.de';
+    if (siteId === 'amazon_uk') return 'Amazon.co.uk';
+    if (siteId === 'amazon_fr') return 'Amazon.fr';
+    if (siteId === 'amazon_it') return 'Amazon.it';
+    if (siteId === 'amazon_nl') return 'Amazon.nl';
+    if (siteId === 'amazon_es') return 'Amazon.es';
+    if (siteId === 'akakce') return 'Akakce.com';
+    if (siteId === 'idealo') return 'Idealo.de';
+    if (siteId === 'idealo_fr') return 'Idealo.fr';
+    if (siteId === 'noon') return 'Noon.com';
+    if (siteId === 'pricena') return 'Pricena.com';
+    if (siteId === 'emag') return 'eMAG.bg';
+    if (siteId === 'emag_ro') return 'eMAG.ro';
+    if (siteId === 'pazaruvaj') return 'Pazaruvaj.com';
+    if (siteId === 'technomarket') return 'Technomarket.bg';
+    if (siteId === 'technopolis') return 'Technopolis.bg';
+    if (siteId === 'skroutz') return 'Skroutz.gr';
+    if (siteId === 'toppreise') return 'Toppreise.ch';
+    if (siteId === 'digitec') return 'Digitec.ch';
+    if (siteId === 'ebay') return 'eBay.com';
+    return siteId;
+  };
+
   const getSortedProducts = (products) => {
     if (!Array.isArray(products)) return [];
     if (sortOption === 'price_asc') {
@@ -471,26 +498,35 @@ function App() {
                   Tahmini bekleme süresi: ~{estimateWaitSeconds(selectedSites)} sn
                 </div>
               )}
-              {loading && progress && (
+              {loading && (
                 <div className="progress-block">
                   <div className="progress-text">
-                    {progress.visited}/{progress.total} site gezildi, {progress.products} ürün bulundu
+                    {progress ? `${progress.visited}/${progress.total} site gezildi, ${progress.products} ürün bulundu` : 'Arama hazırlanıyor...'}
                   </div>
+                  {progress?.currentSite && (
+                    <div className="progress-text">
+                      Şu an geziliyor: {getSiteLabel(progress.currentSite)}
+                    </div>
+                  )}
                   <div className="progress-bar">
                     <div
                       className="progress-bar-fill"
-                      style={{ width: `${Math.round((progress.visited / progress.total) * 100)}%` }}
+                      style={{ width: `${progress ? Math.round((progress.visited / progress.total) * 100) : 0}%` }}
                     />
                   </div>
                 </div>
               )}
-              {loading && logs.length > 0 && (
+              {loading && (
                 <div className="log-panel">
-                  {logs.slice(-10).map((log, index) => (
-                    <div key={`${log}-${index}`} className="log-line">
-                      {log}
-                    </div>
-                  ))}
+                  {logs.length > 0 ? (
+                    logs.slice(-10).map((log, index) => (
+                      <div key={`${log}-${index}`} className="log-line">
+                        {log}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="log-line">Log bekleniyor...</div>
+                  )}
                 </div>
               )}
             </div>
