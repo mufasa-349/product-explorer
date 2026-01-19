@@ -10,6 +10,7 @@ const { searchAmazonUK } = require('./scrapers/amazon-uk');
 const { searchAmazonFR } = require('./scrapers/amazon-fr');
 const { searchAmazonIT } = require('./scrapers/amazon-it');
 const { searchAmazonNL } = require('./scrapers/amazon-nl');
+const { searchAmazonES } = require('./scrapers/amazon-es');
 const { searchTrovaprezzi } = require('./scrapers/trovaprezzi');
 const { searchEbay } = require('./scrapers/ebay');
 const { searchIdealo } = require('./scrapers/idealo');
@@ -162,6 +163,8 @@ async function runSearch(query, sites, options = {}) {
         siteResults = await withTimeout(searchAmazonIT(query), site);
       } else if (site === 'amazon_nl') {
         siteResults = await withTimeout(searchAmazonNL(query), site);
+      } else if (site === 'amazon_es') {
+        siteResults = await withTimeout(searchAmazonES(query), site);
       } else if (site === 'trovaprezzi') {
         siteResults = await withTimeout(searchTrovaprezzi(query), site);
       } else if (site === 'idealo') {
