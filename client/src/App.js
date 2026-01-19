@@ -254,7 +254,7 @@ function App() {
       if (imageFile) {
         const uploadData = new FormData();
         uploadData.append('image', imageFile);
-        const uploadRes = await axios.post('http://localhost:5001/api/image/upload', uploadData, {
+        const uploadRes = await axios.post('https://malikanelectronics.com/product-explorer-api/api/image/upload', uploadData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
         imageToken = uploadRes.data?.token || '';
@@ -263,7 +263,7 @@ function App() {
       const queryParam = encodeURIComponent(query.trim());
       const sitesParam = encodeURIComponent(JSON.stringify(selectedSites));
       const imageParam = imageToken ? `&imageToken=${encodeURIComponent(imageToken)}` : '';
-      const eventSource = new EventSource(`http://localhost:5001/api/search/stream?query=${queryParam}&sites=${sitesParam}${imageParam}`);
+      const eventSource = new EventSource(`https://malikanelectronics.com/product-explorer-api/api/search/stream?query=${queryParam}&sites=${sitesParam}${imageParam}`);
 
       eventSource.addEventListener('log', (event) => {
         const data = JSON.parse(event.data);
