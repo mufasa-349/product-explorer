@@ -498,10 +498,10 @@ function App() {
                   Tahmini bekleme süresi: ~{estimateWaitSeconds(selectedSites)} sn
                 </div>
               )}
-              {loading && (
+              {progress && (
                 <div className="progress-block">
                   <div className="progress-text">
-                    {progress ? `${progress.visited}/${progress.total} site gezildi, ${progress.products} ürün bulundu` : 'Arama hazırlanıyor...'}
+                    {`${progress.visited}/${progress.total} site gezildi, ${progress.products} ürün bulundu`}
                   </div>
                   {progress?.currentSite && (
                     <div className="progress-text">
@@ -516,7 +516,7 @@ function App() {
                   </div>
                 </div>
               )}
-              {loading && (
+              {(loading || logs.length > 0) && (
                 <div className="log-panel">
                   {logs.length > 0 ? (
                     logs.slice(-10).map((log, index) => (
