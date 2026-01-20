@@ -52,7 +52,15 @@ app.use(express.json());
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/avif'];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Desteklenen formatlar: JPEG, PNG, GIF, WebP, AVIF'));
+    }
+  }
 });
 const imageStore = new Map();
 const IMAGE_TTL_MS = 10 * 60 * 1000;
@@ -154,7 +162,7 @@ async function runSearch(query, sites, options = {}) {
       onLog(`[${site.toUpperCase()}] Arama başlatılıyor`);
       let siteResults = [];
       if (site === 'amazon') {
-        siteResults = await withTimeout(searchAmazon(query), site);
+        siteResults = await withTimeout(searchAmazon(query, onLog), site);
       } else if (site === 'amazon_ae') {
         siteResults = await withTimeout(searchAmazonAE(query), site);
       } else if (site === 'amazon_de') {
@@ -411,7 +419,22 @@ app.post('/api/image/upload', upload.single('image'), async (req, res) => {
     if (!req.file?.buffer) {
       return res.status(400).json({ error: 'Görsel bulunamadı' });
     }
-    const token = putImageBuffer(req.file.buffer);
+    
+    // WebP formatını JPG'ye dönüştür
+    let imageBuffer = req.file.buffer;
+    const mimeType = req.file.mimetype || '';
+    
+    if (mimeType === 'image/webp' || mimeType === 'image/avif') {
+      try {
+        const image = await Jimp.read(imageBuffer);
+        imageBuffer = await image.getBufferAsync(Jimp.MIME_JPEG);
+      } catch (convertError) {
+        // Dönüştürme başarısız olursa orijinal buffer'ı kullan
+        console.log('[IMAGE] Format dönüştürme hatası, orijinal format kullanılıyor:', convertError.message);
+      }
+    }
+    
+    const token = putImageBuffer(imageBuffer);
     res.json({ token });
   } catch (error) {
     res.status(500).json({ error: 'Sunucu hatası: ' + error.message });
@@ -432,8 +455,10 @@ app.get('/api/search/stream', async (req, res) => {
   }
 
   res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // Nginx buffering'i devre dışı bırak
+  res.setHeader('Transfer-Encoding', 'chunked');
   res.flushHeaders();
 
   activeSearches += 1;
@@ -448,8 +473,64 @@ app.get('/api/search/stream', async (req, res) => {
   });
 
   const sendEvent = (event, data) => {
-    res.write(`event: ${event}\n`);
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    try {
+      if (res.destroyed) return;
+      
+      const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+      
+      // Önce yaz, sonra hemen flush
+      const written = res.write(message);
+      
+      // Log event'leri için özel işlem - hemen flush
+      if (event === 'log') {
+        // Hemen flush yap
+        if (typeof res.flush === 'function') {
+          res.flush();
+        }
+        
+        // Socket seviyesinde flush
+        if (res.socket && res.socket.writable && !res.socket.destroyed) {
+          try {
+            if (typeof res.socket.flush === 'function') {
+              res.socket.flush();
+            }
+          } catch (e) {
+            // Ignore socket flush errors
+          }
+        }
+        
+        // Bir sonraki tick'te de flush dene (garanti için)
+        process.nextTick(() => {
+          if (!res.destroyed && typeof res.flush === 'function') {
+            try {
+              res.flush();
+            } catch (e) {
+              // Ignore flush errors
+            }
+          }
+        });
+      } else {
+        // Diğer event'ler için normal flush
+        if (typeof res.flush === 'function') {
+          res.flush();
+        }
+      }
+      
+      // Backpressure kontrolü
+      if (!written) {
+        res.once('drain', () => {
+          // Buffer boşaldı, tekrar flush yap
+          if (typeof res.flush === 'function') {
+            res.flush();
+          }
+        });
+      }
+    } catch (err) {
+      // Client bağlantısı kapandıysa hata verme
+      if (!res.destroyed) {
+        console.error('Event send error:', err);
+      }
+    }
   };
 
   try {

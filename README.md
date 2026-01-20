@@ -108,6 +108,11 @@ location /product-explorer-api/ {
   proxy_set_header Host $host;
   proxy_set_header X-Real-IP $remote_addr;
   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  
+  # Server-Sent Events için buffering'i devre dışı bırak
+  proxy_buffering off;
+  proxy_cache off;
+  proxy_read_timeout 86400;
 }
 ```
 

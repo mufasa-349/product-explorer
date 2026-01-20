@@ -1,8 +1,9 @@
 const puppeteer = require('puppeteer');
 
-async function setDeliveryZip(page, zip) {
+async function setDeliveryZip(page, zip, onLog = null) {
+  const log = onLog || ((msg) => console.log(msg));
   try {
-    console.log(`[AMAZON] Delivery address butonu aranıyor...`);
+    log(`[AMAZON] Delivery address butonu aranıyor...`);
     const locationSelectors = [
       '#nav-global-location-popover-link',
       '#nav-global-location-slot',
@@ -22,7 +23,7 @@ async function setDeliveryZip(page, zip) {
       const el = await page.$(selector);
       if (el) {
         foundInFirstPass = true;
-        console.log(`[AMAZON] Delivery address butonu tıklanıyor: ${selector}`);
+        log(`[AMAZON] Delivery address butonu tıklanıyor: ${selector}`);
         await el.click();
         clicked = true;
         break;
@@ -30,7 +31,7 @@ async function setDeliveryZip(page, zip) {
     }
 
     if (!foundInFirstPass && !clicked) {
-      console.log(`[AMAZON] 5 sn içinde bulunamadı, sayfa yenileniyor...`);
+      log(`[AMAZON] 5 sn içinde bulunamadı, sayfa yenileniyor...`);
       await page.reload({ waitUntil: 'networkidle2', timeout: 30000 });
       await new Promise(resolve => setTimeout(resolve, 1000));
       for (const selector of locationSelectors) {
@@ -41,7 +42,7 @@ async function setDeliveryZip(page, zip) {
         }
         const el = await page.$(selector);
         if (el) {
-          console.log(`[AMAZON] Delivery address butonu tıklanıyor: ${selector}`);
+          log(`[AMAZON] Delivery address butonu tıklanıyor: ${selector}`);
           await el.click();
           clicked = true;
           break;
@@ -50,7 +51,7 @@ async function setDeliveryZip(page, zip) {
     }
 
     if (!clicked) {
-      console.log(`[AMAZON] Delivery address butonu bulunamadı`);
+      log(`[AMAZON] Delivery address butonu bulunamadı`);
       return false;
     }
 
@@ -60,45 +61,45 @@ async function setDeliveryZip(page, zip) {
     const applyButtonSelector = '#GLUXZipUpdate, #GLUXZipUpdate-announce, button[data-action="glow"], button[type="submit"]';
     const continueButtonSelector = '#GLUXConfirmClose, #GLUXConfirmClose-announce, [data-action="GLUXConfirmAction"] #GLUXConfirmClose, [data-action="GLUXConfirmAction"] #GLUXConfirmClose-announce, button[data-action="confirm"], button[name="glowDoneButton"], #a-autoid-3-announce';
 
-    console.log(`[AMAZON] Zip code input'u bekleniyor...`);
+    log(`[AMAZON] Zip code input'u bekleniyor...`);
     await page.waitForSelector(zipInputSelector, { timeout: 10000 });
     const zipInput = await page.$(zipInputSelector);
 
     if (!zipInput) {
-      console.log(`[AMAZON] Zip input bulunamadı`);
+      log(`[AMAZON] Zip input bulunamadı`);
       return false;
     }
 
-    console.log(`[AMAZON] Zip code input'una ${zip} giriliyor...`);
+    log(`[AMAZON] Zip code input'una ${zip} giriliyor...`);
     await zipInput.click({ clickCount: 3 });
     await page.keyboard.press('Backspace');
     await zipInput.type(zip, { delay: 80 });
     await new Promise(resolve => setTimeout(resolve, 800));
 
-    console.log(`[AMAZON] Apply butonu tıklanıyor...`);
+    log(`[AMAZON] Apply butonu tıklanıyor...`);
     const applyBtn = await page.$(applyButtonSelector);
     if (applyBtn) {
       await applyBtn.click();
     } else {
-      console.log(`[AMAZON] Apply butonu bulunamadı`);
+      log(`[AMAZON] Apply butonu bulunamadı`);
       return false;
     }
 
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    console.log(`[AMAZON] Continue/Close adımı deneniyor...`);
+    log(`[AMAZON] Continue/Close adımı deneniyor...`);
     let closed = false;
     try {
       await page.waitForSelector(continueButtonSelector, { timeout: 6000 });
       const continueBtn = await page.$(continueButtonSelector);
       if (continueBtn) {
-        console.log(`[AMAZON] Continue butonu tıklanıyor...`);
+        log(`[AMAZON] Continue butonu tıklanıyor...`);
         await continueBtn.click();
         closed = true;
         await new Promise(resolve => setTimeout(resolve, 1500));
       }
     } catch (e) {
-      console.log(`[AMAZON] Continue butonu görünmedi, alternatif kapanış deneniyor...`);
+      log(`[AMAZON] Continue butonu görünmedi, alternatif kapanış deneniyor...`);
     }
 
     if (!closed) {
@@ -106,7 +107,7 @@ async function setDeliveryZip(page, zip) {
         const closeSelector = 'button[aria-label="Close"], [data-action="a-popover-close"]';
         const closeBtn = await page.$(closeSelector);
         if (closeBtn) {
-          console.log(`[AMAZON] Pop-up X butonu tıklanıyor...`);
+          log(`[AMAZON] Pop-up X butonu tıklanıyor...`);
           await closeBtn.click();
           closed = true;
           await new Promise(resolve => setTimeout(resolve, 1200));
@@ -117,30 +118,31 @@ async function setDeliveryZip(page, zip) {
     }
 
     if (!closed) {
-      console.log(`[AMAZON] Pop-up dışına tıklama deneniyor...`);
+      log(`[AMAZON] Pop-up dışına tıklama deneniyor...`);
       await page.mouse.click(5, 5);
       await new Promise(resolve => setTimeout(resolve, 1200));
     }
 
-    console.log(`[AMAZON] Sayfa yenileniyor...`);
+    log(`[AMAZON] Sayfa yenileniyor...`);
     await page.reload({ waitUntil: 'networkidle2', timeout: 30000 });
 
-    console.log(`[AMAZON] Delivery address ayarlama denemesi tamamlandı (${zip})`);
+    log(`[AMAZON] Delivery address ayarlama denemesi tamamlandı (${zip})`);
     return true;
   } catch (e) {
-    console.log(`[AMAZON] Delivery address ayarlama hatası: ${e.message}`);
+    log(`[AMAZON] Delivery address ayarlama hatası: ${e.message}`);
     return false;
   }
 }
 
-async function searchAmazon(query) {
+async function searchAmazon(query, onLog = null) {
+  const log = onLog || ((msg) => console.log(msg));
   let browser;
   try {
-    console.log(`[AMAZON] Arama başlatılıyor: "${query}"`);
+    log(`[AMAZON] Arama başlatılıyor: "${query}"`);
     
     browser = await puppeteer.launch({
-      headless: true,
-      slowMo: 50,
+      headless: false,
+      slowMo: 10,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
@@ -151,31 +153,37 @@ async function searchAmazon(query) {
     
     // Arama sayfasına git (ana sayfaya gitme)
     const searchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(query)}`;
-    console.log(`[AMAZON] Arama sayfasına gidiliyor: ${searchUrl}`);
+    log(`[AMAZON] Arama sayfasına gidiliyor: ${searchUrl}`);
     
     await page.goto(searchUrl, { 
       waitUntil: 'networkidle2',
       timeout: 30000 
     });
 
-    // Delivery address'i ayarla (US zip)
-    await setDeliveryZip(page, '90075');
+    // Bot detection için sayfayı yenile
+    log(`[AMAZON] Bot detection için sayfa yenileniyor...`);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    await page.reload({ waitUntil: 'networkidle2', timeout: 30000 });
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
-    console.log(`[AMAZON] Sayfa yüklendi, ürünler çekilmeye başlanıyor...`);
+    // Delivery address'i ayarla (US zip)
+    await setDeliveryZip(page, '90075', onLog);
+
+    log(`[AMAZON] Sayfa yüklendi, ürünler çekilmeye başlanıyor...`);
     
     // Ürün elementlerinin yüklenmesini bekle
     try {
       await page.waitForSelector('[data-component-type="s-search-result"]', { timeout: 10000 });
-      console.log(`[AMAZON] Ürün elementleri yüklendi`);
+      log(`[AMAZON] Ürün elementleri yüklendi`);
     } catch (e) {
-      console.log(`[AMAZON] Ürün elementleri için selector bulunamadı, alternatif deneniyor...`);
+      log(`[AMAZON] Ürün elementleri için selector bulunamadı, alternatif deneniyor...`);
     }
     
     // Sayfanın tam yüklenmesini bekle
     await new Promise(resolve => setTimeout(resolve, 3000));
 
     // Ürünleri çek
-    console.log(`[AMAZON] Ürün elementleri aranıyor...`);
+    log(`[AMAZON] Ürün elementleri aranıyor...`);
     const products = await page.evaluate((searchQuery) => {
       const items = [];
       const nonSponsoredItems = [];
@@ -353,16 +361,16 @@ async function searchAmazon(query) {
       return items;
     }, query);
     
-    console.log(`[AMAZON] ${products.length} eşleşen ürün bulundu`);
+    log(`[AMAZON] ${products.length} eşleşen ürün bulundu`);
 
     await browser.close();
 
     if (products.length === 0) {
-      console.log(`[AMAZON] Ürün bulunamadı`);
+      log(`[AMAZON] Ürün bulunamadı`);
       throw new Error('Ürün bulunamadı');
     }
 
-    console.log(`[AMAZON] Arama tamamlandı, ${products.length} ürün döndürülüyor`);
+    log(`[AMAZON] Arama tamamlandı, ${products.length} ürün döndürülüyor`);
     return products;
   } catch (error) {
     if (browser) {

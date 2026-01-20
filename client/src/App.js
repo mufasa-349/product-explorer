@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import './App.css';
 import axios from 'axios';
 
@@ -16,12 +16,21 @@ function App() {
   const [toastMessage, setToastMessage] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
   const [sortOption, setSortOption] = useState('default');
+  const logPanelRef = useRef(null);
+
   useEffect(() => {
     if (!('Notification' in window)) return;
     if (Notification.permission === 'default') {
       Notification.requestPermission().catch(() => {});
     }
   }, []);
+
+  // Loglar güncellendiğinde otomatik scroll
+  useEffect(() => {
+    if (logPanelRef.current && logs.length > 0) {
+      logPanelRef.current.scrollTop = logPanelRef.current.scrollHeight;
+    }
+  }, [logs]);
 
   const showToast = (message) => {
     setToastMessage(message);
@@ -59,8 +68,14 @@ function App() {
       if (item.type && item.type.startsWith('image/')) {
         const file = item.getAsFile();
         if (file) {
-          setImageFile(file);
-          setImageNote('Panodan görsel eklendi.');
+          // WebP, PNG, AVIF formatlarını kontrol et
+          const allowedTypes = ['image/webp', 'image/png', 'image/avif', 'image/jpeg', 'image/jpg', 'image/gif'];
+          if (allowedTypes.includes(item.type)) {
+            setImageFile(file);
+            setImageNote('Panodan görsel eklendi.');
+          } else {
+            setImageNote('Desteklenen formatlar: WebP, PNG, AVIF, JPEG, GIF');
+          }
         }
         break;
       }
@@ -265,9 +280,30 @@ function App() {
       const imageParam = imageToken ? `&imageToken=${encodeURIComponent(imageToken)}` : '';
       const eventSource = new EventSource(`https://malikanelectronics.com/product-explorer-api/api/search/stream?query=${queryParam}&sites=${sitesParam}${imageParam}`);
 
+      eventSource.onopen = () => {
+        console.log('EventSource bağlantısı açıldı');
+      };
+
+      eventSource.onerror = (error) => {
+        console.error('EventSource hatası:', error);
+      };
+
       eventSource.addEventListener('log', (event) => {
-        const data = JSON.parse(event.data);
-        setLogs((prev) => [...prev, data.message]);
+        try {
+          const data = JSON.parse(event.data);
+          // Logları hemen ekle - React state güncellemesi
+          setLogs((prev) => {
+            // Yeni log'u hemen ekle
+            const newLogs = [...prev, data.message];
+            // State güncellemesini garanti et
+            requestAnimationFrame(() => {
+              // DOM güncellemesini tetikle
+            });
+            return newLogs;
+          });
+        } catch (e) {
+          console.error('Log parse hatası:', e);
+        }
       });
 
       eventSource.addEventListener('progress', (event) => {
@@ -429,8 +465,22 @@ function App() {
               <div className="search-bar-container image-input-row">
                 <input
                   type="file"
-                  accept="image/*"
-                  onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                  accept="image/webp,image/png,image/avif,image/jpeg,image/jpg,image/gif"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    if (file) {
+                      const allowedTypes = ['image/webp', 'image/png', 'image/avif', 'image/jpeg', 'image/jpg', 'image/gif'];
+                      if (allowedTypes.includes(file.type)) {
+                        setImageFile(file);
+                        setImageNote('');
+                      } else {
+                        setError('Desteklenen formatlar: WebP, PNG, AVIF, JPEG, GIF');
+                        setImageFile(null);
+                      }
+                    } else {
+                      setImageFile(null);
+                    }
+                  }}
                   onPaste={handleImagePaste}
                   className="search-bar"
                   disabled={loading}
@@ -438,7 +488,7 @@ function App() {
                 <span className="image-optional-note">Opsiyonel</span>
               </div>
               <div className="image-help-text">
-                Görsel ekleme opsiyoneldir. Dosya seçebilir veya panodan yapıştırabilirsiniz.
+                Görsel ekleme opsiyoneldir. Desteklenen formatlar: WebP, PNG, AVIF, JPEG, GIF. Dosya seçebilir veya panodan yapıştırabilirsiniz.
               </div>
               {imageFile && (
                 <div className="image-preview">
@@ -517,9 +567,9 @@ function App() {
                 </div>
               )}
               {(loading || logs.length > 0) && (
-                <div className="log-panel">
+                <div className="log-panel" ref={logPanelRef}>
                   {logs.length > 0 ? (
-                    logs.slice(-10).map((log, index) => (
+                    logs.map((log, index) => (
                       <div key={`${log}-${index}`} className="log-line">
                         {log}
                       </div>
