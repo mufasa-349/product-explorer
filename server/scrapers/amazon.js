@@ -141,7 +141,7 @@ async function searchAmazon(query, onLog = null) {
     log(`[AMAZON] Arama başlatılıyor: "${query}"`);
     
     browser = await puppeteer.launch({
-      headless: false,
+      headless: true,
       slowMo: 10,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
