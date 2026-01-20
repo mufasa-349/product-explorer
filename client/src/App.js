@@ -4,7 +4,7 @@ import axios from 'axios';
 
 function App() {
   const [query, setQuery] = useState('');
-  const [selectedSites, setSelectedSites] = useState(['amazon', 'ebay']);
+  const [selectedSites, setSelectedSites] = useState(['amazon']);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -92,8 +92,7 @@ function App() {
       id: 'usa',
       label: 'Amerika',
       sites: [
-        { id: 'amazon', label: 'Amazon.com' },
-        { id: 'ebay', label: 'Ebay.com' }
+        { id: 'amazon', label: 'Amazon.com' }
       ]
     },
     {
@@ -212,8 +211,7 @@ function App() {
     technomarket: 10,
     technopolis: 10,
     skroutz: 10,
-    akakce: 8,
-    ebay: 10
+    akakce: 8
   };
 
   const handleSiteToggle = (site) => {
@@ -417,7 +415,6 @@ function App() {
     if (siteId === 'skroutz') return 'Skroutz.gr';
     if (siteId === 'toppreise') return 'Toppreise.ch';
     if (siteId === 'digitec') return 'Digitec.ch';
-    if (siteId === 'ebay') return 'eBay.com';
     return siteId;
   };
 
@@ -702,7 +699,7 @@ function App() {
                                                     ? 'Toppreise.ch'
                                                     : product.site === 'digitec'
                                                       ? 'Digitec.ch'
-                                                      : 'eBay.com'}
+                                                      : getSiteLabel(product.site)}
                         </span>
                         {(() => {
                           const priceInfo = formatPrice(product);
@@ -766,7 +763,7 @@ function App() {
                                               ? 'Toppreise.ch'
                                               : result.site === 'digitec'
                                                 ? 'Digitec.ch'
-                                                : 'eBay.com'}: 
+                                                : getSiteLabel(result.site)}: 
                   </span>
                   {result.success ? (
                     <span className="status-success">
