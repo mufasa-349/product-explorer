@@ -4,7 +4,7 @@ import axios from 'axios';
 
 function App() {
   const [query, setQuery] = useState('');
-  const [selectedSites, setSelectedSites] = useState(['amazon']);
+  const [selectedSites, setSelectedSites] = useState(['amazon_ae', 'amazon_de', 'idealo']);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);

@@ -4,54 +4,195 @@ async function setDeliveryZip(page, zip, onLog = null) {
   const log = onLog || ((msg) => console.log(msg));
   try {
     log(`[AMAZON] Delivery address butonu aranıyor...`);
+    
+    // Sayfanın tam yüklenmesini bekle
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Daha kapsamlı selector listesi
     const locationSelectors = [
       '#nav-global-location-popover-link',
       '#nav-global-location-slot',
       '#glow-ingress-line2',
       '[data-csa-c-content-id="nav_cs_ap"]',
-      'input[data-action-type="SELECT_LOCATION"]'
+      'input[data-action-type="SELECT_LOCATION"]',
+      '#nav-global-location-popover-link span',
+      '#nav-global-location-slot span',
+      'a#nav-global-location-popover-link',
+      'span#glow-ingress-line2',
+      '[id*="location"]',
+      '[aria-label*="Deliver to"]',
+      '[aria-label*="deliver to"]',
+      '[aria-label*="Select a location"]',
+      'a[href*="glow=changeLocation"]',
+      '[data-csa-c-slot-id="nav_cs_ap"]'
     ];
+    
     let clicked = false;
-    let foundInFirstPass = false;
-
+    
+    // İlk deneme: DOM'da element var mı kontrol et (görünür olmasa bile)
+    log(`[AMAZON] İlk deneme: DOM'da element aranıyor...`);
     for (const selector of locationSelectors) {
       try {
-        await page.waitForSelector(selector, { timeout: 5000, visible: true });
-      } catch (e) {
-        // Bu selector görünür değilse sıradakini dene
-      }
-      const el = await page.$(selector);
-      if (el) {
-        foundInFirstPass = true;
-        log(`[AMAZON] Delivery address butonu tıklanıyor: ${selector}`);
-        await el.click();
-        clicked = true;
-        break;
-      }
-    }
-
-    if (!foundInFirstPass && !clicked) {
-      log(`[AMAZON] 5 sn içinde bulunamadı, sayfa yenileniyor...`);
-      await page.reload({ waitUntil: 'networkidle2', timeout: 30000 });
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      for (const selector of locationSelectors) {
-        try {
-          await page.waitForSelector(selector, { timeout: 5000, visible: true });
-        } catch (e) {
-          // noop
-        }
+        // Önce DOM'da var mı kontrol et
         const el = await page.$(selector);
         if (el) {
-          log(`[AMAZON] Delivery address butonu tıklanıyor: ${selector}`);
-          await el.click();
-          clicked = true;
-          break;
+          // Element görünür mü kontrol et
+          const isVisible = await page.evaluate((sel) => {
+            const elem = document.querySelector(sel);
+            if (!elem) return false;
+            const style = window.getComputedStyle(elem);
+            return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+          }, selector);
+          
+          if (isVisible) {
+            log(`[AMAZON] Delivery address butonu bulundu (görünür): ${selector}`);
+            // Scroll et ve tıkla
+            await page.evaluate((sel) => {
+              const elem = document.querySelector(sel);
+              if (elem) elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, selector);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await el.click();
+            clicked = true;
+            break;
+          } else {
+            // Görünür değilse JavaScript ile tıklamayı dene
+            log(`[AMAZON] Element bulundu ama görünür değil, JavaScript ile tıklanıyor: ${selector}`);
+            await page.evaluate((sel) => {
+              const elem = document.querySelector(sel);
+              if (elem) {
+                elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
+                elem.dispatchEvent(clickEvent);
+              }
+            }, selector);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            clicked = true;
+            break;
+          }
+        }
+      } catch (e) {
+        // Devam et
+      }
+    }
+    
+    // İkinci deneme: Sayfayı scroll et ve tekrar dene
+    if (!clicked) {
+      log(`[AMAZON] İlk denemede bulunamadı, sayfa scroll ediliyor ve tekrar deneniyor...`);
+      await page.evaluate(() => {
+        window.scrollTo(0, 0);
+      });
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      for (const selector of locationSelectors) {
+        try {
+          const el = await page.$(selector);
+          if (el) {
+            await page.evaluate((sel) => {
+              const elem = document.querySelector(sel);
+              if (elem) elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, selector);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            const isVisible = await page.evaluate((sel) => {
+              const elem = document.querySelector(sel);
+              if (!elem) return false;
+              const style = window.getComputedStyle(elem);
+              return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+            }, selector);
+            
+            if (isVisible) {
+              log(`[AMAZON] Delivery address butonu bulundu (scroll sonrası): ${selector}`);
+              await el.click();
+              clicked = true;
+              break;
+            } else {
+              log(`[AMAZON] JavaScript ile tıklama deneniyor: ${selector}`);
+              await page.evaluate((sel) => {
+                const elem = document.querySelector(sel);
+                if (elem) {
+                  const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
+                  elem.dispatchEvent(clickEvent);
+                }
+              }, selector);
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              clicked = true;
+              break;
+            }
+          }
+        } catch (e) {
+          // Devam et
+        }
+      }
+    }
+    
+    // Üçüncü deneme: Sayfa yenile ve tekrar dene
+    if (!clicked) {
+      log(`[AMAZON] İkinci denemede bulunamadı, sayfa yenileniyor...`);
+      await page.reload({ waitUntil: 'networkidle2', timeout: 30000 });
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      for (const selector of locationSelectors) {
+        try {
+          // Daha uzun timeout ile bekle
+          await page.waitForSelector(selector, { timeout: 8000, visible: false });
+          const el = await page.$(selector);
+          if (el) {
+            await page.evaluate((sel) => {
+              const elem = document.querySelector(sel);
+              if (elem) elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, selector);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            log(`[AMAZON] Delivery address butonu bulundu (sayfa yenileme sonrası): ${selector}`);
+            await el.click();
+            clicked = true;
+            break;
+          }
+        } catch (e) {
+          // Devam et
+        }
+      }
+    }
+    
+    // Son deneme: XPath ile ara
+    if (!clicked) {
+      log(`[AMAZON] XPath ile delivery address butonu aranıyor...`);
+      const xpathSelectors = [
+        "//a[contains(@id, 'location')]",
+        "//span[contains(text(), 'Deliver to')]",
+        "//span[contains(text(), 'deliver to')]",
+        "//a[contains(@aria-label, 'Deliver to')]",
+        "//*[contains(@data-csa-c-content-id, 'nav_cs_ap')]"
+      ];
+      
+      for (const xpath of xpathSelectors) {
+        try {
+          const elements = await page.$x(xpath);
+          if (elements.length > 0) {
+            const el = elements[0];
+            await page.evaluate((xp) => {
+              const result = document.evaluate(xp, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+              const elem = result.singleNodeValue;
+              if (elem) {
+                elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
+                elem.dispatchEvent(clickEvent);
+              }
+            }, xpath);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            log(`[AMAZON] XPath ile buton bulundu ve tıklandı: ${xpath}`);
+            clicked = true;
+            break;
+          }
+        } catch (e) {
+          // Devam et
         }
       }
     }
 
     if (!clicked) {
-      log(`[AMAZON] Delivery address butonu bulunamadı`);
+      log(`[AMAZON] Delivery address butonu bulunamadı, devam ediliyor (zip ayarlanmadan)...`);
       return false;
     }
 
@@ -166,8 +307,11 @@ async function searchAmazon(query, onLog = null) {
     await page.reload({ waitUntil: 'networkidle2', timeout: 30000 });
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Delivery address'i ayarla (US zip)
-    await setDeliveryZip(page, '90075', onLog);
+    // Delivery address'i ayarla (US zip) - başarısız olsa bile devam et
+    const deliverySet = await setDeliveryZip(page, '90075', onLog);
+    if (!deliverySet) {
+      log(`[AMAZON] Delivery address ayarlanamadı, zip olmadan devam ediliyor...`);
+    }
 
     log(`[AMAZON] Sayfa yüklendi, ürünler çekilmeye başlanıyor...`);
     
