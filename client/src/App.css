@@ -223,6 +223,31 @@
   cursor: not-allowed;
 }
 
+.stop-button {
+  padding: 15px 30px;
+  font-size: 1rem;
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stop-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+}
+
+.search-timer {
+  color: #555;
+  font-size: 0.95rem;
+  margin-top: -10px;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
 .currency-row {
   display: flex;
   align-items: center;
@@ -509,6 +534,21 @@
     width: 100%;
     box-sizing: border-box;
     min-height: 44px; /* Touch target için */
+  }
+
+  .stop-button {
+    padding: 12px 20px;
+    font-size: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 44px;
+    margin-top: 8px;
+  }
+
+  .search-timer {
+    font-size: 0.9rem;
+    margin-top: 5px;
+    margin-bottom: 5px;
   }
 
   .search-layout {

@@ -16,6 +16,9 @@ function App() {
   const [toastMessage, setToastMessage] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
   const [sortOption, setSortOption] = useState('default');
+  const [searchStartTime, setSearchStartTime] = useState(null);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [eventSourceRef, setEventSourceRef] = useState(null);
   const logPanelRef = useRef(null);
 
   useEffect(() => {
@@ -31,6 +34,21 @@ function App() {
       logPanelRef.current.scrollTop = logPanelRef.current.scrollHeight;
     }
   }, [logs]);
+
+  // Arama süresi sayacı
+  useEffect(() => {
+    let interval = null;
+    if (loading && searchStartTime) {
+      interval = setInterval(() => {
+        setElapsedTime(Math.floor((Date.now() - searchStartTime) / 1000));
+      }, 1000);
+    } else {
+      setElapsedTime(0);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [loading, searchStartTime]);
 
   const showToast = (message) => {
     setToastMessage(message);
@@ -256,6 +274,8 @@ function App() {
     }
 
     const searchStartedAt = Date.now();
+    setSearchStartTime(Date.now());
+    setElapsedTime(0);
     setLoading(true);
     setError(null);
     setResults(null);
@@ -277,6 +297,7 @@ function App() {
       const sitesParam = encodeURIComponent(JSON.stringify(selectedSites));
       const imageParam = imageToken ? `&imageToken=${encodeURIComponent(imageToken)}` : '';
       const eventSource = new EventSource(`https://malikanelectronics.com/product-explorer-api/api/search/stream?query=${queryParam}&sites=${sitesParam}${imageParam}`);
+      setEventSourceRef(eventSource);
 
       eventSource.onopen = () => {
         console.log('EventSource bağlantısı açıldı');
@@ -313,6 +334,8 @@ function App() {
         const data = JSON.parse(event.data);
         setResults(data);
         setLoading(false);
+        setSearchStartTime(null);
+        setEventSourceRef(null);
         const total = data?.sortedProducts?.length ?? 0;
         notifySearchDone(total, Date.now() - searchStartedAt);
         eventSource.close();
@@ -321,12 +344,26 @@ function App() {
       eventSource.addEventListener('error', (event) => {
         setError('Arama sırasında bir hata oluştu');
         setLoading(false);
+        setSearchStartTime(null);
+        setEventSourceRef(null);
         eventSource.close();
       });
     } catch (err) {
       setError(err.response?.data?.error || 'Arama sırasında bir hata oluştu');
       setLoading(false);
+      setSearchStartTime(null);
+      setEventSourceRef(null);
     }
+  };
+
+  const handleStopSearch = () => {
+    if (eventSourceRef) {
+      eventSourceRef.close();
+      setEventSourceRef(null);
+    }
+    setLoading(false);
+    setSearchStartTime(null);
+    setError('Arama durduruldu');
   };
 
   const formatPrice = (product) => {
@@ -458,7 +495,21 @@ function App() {
                 >
                   {loading ? 'Aranıyor...' : 'Ara'}
                 </button>
+                {loading && (
+                  <button
+                    type="button"
+                    onClick={handleStopSearch}
+                    className="stop-button"
+                  >
+                    Durdur
+                  </button>
+                )}
               </div>
+              {loading && elapsedTime > 0 && (
+                <div className="search-timer">
+                  Geçen süre: {Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')}
+                </div>
+              )}
               <div className="search-bar-container image-input-row">
                 <input
                   type="file"
@@ -641,6 +692,55 @@ function App() {
               <div className="warning-message">{results.imageWarning}</div>
             )}
 
+            <div className="site-status">
+              {results.results.map((result, index) => (
+                <div key={index} className="status-item">
+                  <span className="status-site">
+                    {result.site === 'amazon'
+                      ? 'Amazon.com'
+                      : result.site === 'amazon_ae'
+                        ? 'Amazon.ae'
+                        : result.site === 'amazon_de'
+                          ? 'Amazon.de'
+                          : result.site === 'amazon_uk'
+                            ? 'Amazon.co.uk'
+                            : result.site === 'akakce'
+                              ? 'Akakce.com'
+                            : result.site === 'idealo'
+                              ? 'Idealo.de'
+                              : result.site === 'noon'
+                                ? 'Noon.com'
+                                : result.site === 'pricena'
+                                  ? 'Pricena.com'
+                                  : result.site === 'emag'
+                                    ? 'eMAG.bg'
+                                    : result.site === 'pazaruvaj'
+                                      ? 'Pazaruvaj.com'
+                                      : result.site === 'technomarket'
+                                        ? 'Technomarket.bg'
+                                        : result.site === 'technopolis'
+                                          ? 'Technopolis.bg'
+                                          : result.site === 'skroutz'
+                                            ? 'Skroutz.gr'
+                                            : result.site === 'toppreise'
+                                              ? 'Toppreise.ch'
+                                              : result.site === 'digitec'
+                                                ? 'Digitec.ch'
+                                                : getSiteLabel(result.site)}: 
+                  </span>
+                  {result.success ? (
+                    <span className="status-success">
+                      {result.products.length} ürün bulundu
+                    </span>
+                  ) : (
+                    <span className="status-error">
+                      {result.error || 'Siteye erişilemedi'}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+
             {displayedProducts.length > 0 ? (
               <div className="products-list">
                 {displayedProducts.map((product, index) => (
@@ -728,55 +828,6 @@ function App() {
                 <p>Ürün bulunamadı</p>
               </div>
             )}
-
-            <div className="site-status">
-              {results.results.map((result, index) => (
-                <div key={index} className="status-item">
-                  <span className="status-site">
-                    {result.site === 'amazon'
-                      ? 'Amazon.com'
-                      : result.site === 'amazon_ae'
-                        ? 'Amazon.ae'
-                        : result.site === 'amazon_de'
-                          ? 'Amazon.de'
-                          : result.site === 'amazon_uk'
-                            ? 'Amazon.co.uk'
-                            : result.site === 'akakce'
-                              ? 'Akakce.com'
-                            : result.site === 'idealo'
-                              ? 'Idealo.de'
-                              : result.site === 'noon'
-                                ? 'Noon.com'
-                                : result.site === 'pricena'
-                                  ? 'Pricena.com'
-                                  : result.site === 'emag'
-                                    ? 'eMAG.bg'
-                                    : result.site === 'pazaruvaj'
-                                      ? 'Pazaruvaj.com'
-                                      : result.site === 'technomarket'
-                                        ? 'Technomarket.bg'
-                                        : result.site === 'technopolis'
-                                          ? 'Technopolis.bg'
-                                          : result.site === 'skroutz'
-                                            ? 'Skroutz.gr'
-                                            : result.site === 'toppreise'
-                                              ? 'Toppreise.ch'
-                                              : result.site === 'digitec'
-                                                ? 'Digitec.ch'
-                                                : getSiteLabel(result.site)}: 
-                  </span>
-                  {result.success ? (
-                    <span className="status-success">
-                      {result.products.length} ürün bulundu
-                    </span>
-                  ) : (
-                    <span className="status-error">
-                      {result.error || 'Siteye erişilemedi'}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
           </div>
         )}
       </div>
