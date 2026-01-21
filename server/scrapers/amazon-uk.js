@@ -140,7 +140,7 @@ async function searchAmazonUK(query) {
 
     browser = await puppeteer.launch({
       headless: true,
-      slowMo: 0,
+      slowMo: 10,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
@@ -237,30 +237,68 @@ async function searchAmazonUK(query) {
 
           let price = '';
           const priceContainer = element.querySelector('[data-cy="price-recipe"]') || element;
-          const primaryPriceSelectors = [
-            '.a-price .a-offscreen',
-            '.a-price-whole',
-            '.a-price .a-price-symbol + span'
-          ];
+          
+          // Önce .a-offscreen'den tam fiyatı al (en güvenilir - "TRY 13,387.09" formatında)
+          const offscreenPrice = priceContainer.querySelector('.a-price .a-offscreen');
+          if (offscreenPrice) {
+            const offscreenText = offscreenPrice.textContent || offscreenPrice.getAttribute('aria-label') || '';
+            // "TRY 13,387.09" veya "13,387.09" formatını parse et
+            // Virgül binlik ayırıcı, nokta ondalık ayırıcı
+            const priceMatch = offscreenText.match(/([\d,]+\.?\d*)/);
+            if (priceMatch) {
+              // Virgülleri kaldır (binlik ayırıcı), noktayı koru (ondalık ayırıcı)
+              price = priceMatch[1].replace(/,/g, '');
+            }
+          }
+          
+          // Eğer offscreen'den alınamadıysa, parçalı fiyatı birleştir
+          if (!price) {
+            const priceWhole = priceContainer.querySelector('.a-price-whole');
+            const priceFraction = priceContainer.querySelector('.a-price-fraction');
+            
+            if (priceWhole) {
+              let wholeText = priceWhole.textContent || '';
+              // Virgülleri kaldır (binlik ayırıcı)
+              wholeText = wholeText.replace(/,/g, '');
+              
+              if (priceFraction) {
+                const fractionText = priceFraction.textContent || '';
+                price = `${wholeText}.${fractionText}`;
+              } else {
+                price = wholeText;
+              }
+            }
+          }
+          
+          // Son çare: diğer selector'ları dene
+          if (!price) {
+            const primaryPriceSelectors = [
+              '.a-price-whole',
+              '.a-price .a-price-symbol + span'
+            ];
 
-          for (const selector of primaryPriceSelectors) {
-            const priceElement = priceContainer.querySelector(selector);
-            if (priceElement) {
-              const priceText = priceElement.textContent || priceElement.getAttribute('aria-label') || priceElement.innerText || '';
-              const extractedPrice = priceText.trim().replace(/[^0-9.]/g, '');
-              if (extractedPrice && !isNaN(parseFloat(extractedPrice))) {
-                price = extractedPrice;
-                break;
+            for (const selector of primaryPriceSelectors) {
+              const priceElement = priceContainer.querySelector(selector);
+              if (priceElement) {
+                const priceText = priceElement.textContent || priceElement.getAttribute('aria-label') || '';
+                // Virgülleri kaldır, sadece sayı ve noktayı koru
+                const extractedPrice = priceText.trim().replace(/,/g, '').replace(/[^0-9.]/g, '');
+                if (extractedPrice && !isNaN(parseFloat(extractedPrice))) {
+                  price = extractedPrice;
+                  break;
+                }
               }
             }
           }
 
+          // En son çare: tüm price elementlerini ara
           if (!price) {
             const allPriceElements = element.querySelectorAll('[class*="price"], [data-a-color="price"]');
             for (const priceEl of allPriceElements) {
               if (priceEl.closest('[data-cy="secondary-offer-recipe"]')) continue;
               const priceText = priceEl.textContent || priceEl.getAttribute('aria-label') || '';
-              const extractedPrice = priceText.trim().replace(/[^0-9.]/g, '');
+              // Virgülleri kaldır, sadece sayı ve noktayı koru
+              const extractedPrice = priceText.trim().replace(/,/g, '').replace(/[^0-9.]/g, '');
               if (extractedPrice && !isNaN(parseFloat(extractedPrice)) && parseFloat(extractedPrice) > 0) {
                 price = extractedPrice;
                 break;
