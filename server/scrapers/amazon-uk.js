@@ -344,10 +344,6 @@ async function searchAmazonUK(query) {
 
     console.log(`[AMAZON.UK] ${products.length} eşleşen ürün bulundu`);
 
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/a86a41d3-7b86-43a5-b504-f57a0afaf031',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'amazon-uk.js:347',message:'Scraper output samples',data:{sample:products.slice(0,2)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B,C'})}).catch(()=>{});
-    // #endregion
-
     await browser.close();
 
     if (products.length === 0) {

@@ -236,11 +236,6 @@ async function runSearch(query, sites, options = {}) {
     if (result.success && result.products) {
       result.products.forEach(product => {
         let normalizedProduct = { ...product };
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/a86a41d3-7b86-43a5-b504-f57a0afaf031',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.js:241',message:'Normalization entry',data:{site:result.site,productPrice:product.price,productCurrency:product.currency},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A,B,C'})}).catch(()=>{});
-        // #endregion
-
         if (product.currency && product.currency.toUpperCase() === 'AED') {
           const basePrice = parseFloat(product.price);
           if (!isNaN(basePrice)) {
@@ -254,9 +249,6 @@ async function runSearch(query, sites, options = {}) {
             };
           }
         } else if (product.currency && (product.currency.toUpperCase() === 'EUR' || (result.site === 'amazon_uk' && parseFloat(product.price) < 2000))) {
-          // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/a86a41d3-7b86-43a5-b504-f57a0afaf031',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.js:253',message:'EUR/UK-Auto-Fix hit',data:{site:result.site,price:product.price,parsedPrice:parseFloat(product.price)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B,C'})}).catch(()=>{});
-          // #endregion
           const basePrice = parseFloat(product.price);
           if (!isNaN(basePrice)) {
             // Eğer amazon_uk'den düşük fiyat gelmişse ve TRY denmişse, onu EUR kabul edip çeviriyoruz
