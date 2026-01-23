@@ -281,13 +281,19 @@ async function searchAmazon(query, onLog = null) {
   try {
     log(`[AMAZON] Arama başlatılıyor: "${query}"`);
     
+    // DEBUG modunda görünür, production'da headless
+    const isDebugMode = process.env.DEBUG === 'true' || process.env.NODE_ENV !== 'production';
+    
     browser = await puppeteer.launch({
-      headless: true,
-      slowMo: 10,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      headless: !isDebugMode, // DEBUG modunda görünür, production'da headless
+      slowMo: isDebugMode ? 50 : 10, // Debug modunda daha yavaş
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--start-maximized']
     });
 
     const page = await browser.newPage();
+    
+    // Sayfa boyutunu ayarla (tam ekran görünüm için)
+    await page.setViewport({ width: 1920, height: 1080 });
     
     // User-Agent ayarla (bot olarak algılanmamak için)
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
@@ -298,14 +304,14 @@ async function searchAmazon(query, onLog = null) {
     
     await page.goto(searchUrl, { 
       waitUntil: 'networkidle2',
-      timeout: 30000 
+      timeout: 60000 // Timeout süresini artırdık
     });
 
     // Bot detection için sayfayı yenile
     log(`[AMAZON] Bot detection için sayfa yenileniyor...`);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    await page.reload({ waitUntil: 'networkidle2', timeout: 30000 });
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 3000)); // Biraz daha bekle
+    await page.reload({ waitUntil: 'networkidle2', timeout: 60000 }); // Timeout artırıldı
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
     // Delivery address'i ayarla (US zip) - başarısız olsa bile devam et
     const deliverySet = await setDeliveryZip(page, '90075', onLog);

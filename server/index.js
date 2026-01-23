@@ -142,7 +142,7 @@ async function runSearch(query, sites, options = {}) {
   const onLog = options.onLog || ((message) => logs.push(message));
   const onProgress = options.onProgress || ((data) => Object.assign(progress, data));
   const emitProgress = (extra = {}) => onProgress({ ...progress, ...extra });
-  const SITE_TIMEOUT_MS = 35000;
+  const SITE_TIMEOUT_MS = 70000; // Amazon için yeterli süre (70 saniye)
 
   const withTimeout = (promise, site) => {
     let timeoutId;
