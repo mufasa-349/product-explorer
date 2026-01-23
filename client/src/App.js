@@ -287,7 +287,7 @@ function App() {
       if (imageFile) {
         const uploadData = new FormData();
         uploadData.append('image', imageFile);
-        const uploadRes = await axios.post('https://malikanelectronics.com/product-explorer-api/api/image/upload', uploadData, {
+        const uploadRes = await axios.post('http://localhost:5001/api/image/upload', uploadData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
         imageToken = uploadRes.data?.token || '';
@@ -296,7 +296,7 @@ function App() {
       const queryParam = encodeURIComponent(query.trim());
       const sitesParam = encodeURIComponent(JSON.stringify(selectedSites));
       const imageParam = imageToken ? `&imageToken=${encodeURIComponent(imageToken)}` : '';
-      const eventSource = new EventSource(`https://malikanelectronics.com/product-explorer-api/api/search/stream?query=${queryParam}&sites=${sitesParam}${imageParam}`);
+      const eventSource = new EventSource(`http://localhost:5001/api/search/stream?query=${queryParam}&sites=${sitesParam}${imageParam}`);
       setEventSourceRef(eventSource);
 
       eventSource.onopen = () => {
@@ -367,6 +367,9 @@ function App() {
   };
 
   const formatPrice = (product) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/a86a41d3-7b86-43a5-b504-f57a0afaf031',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.js:371',message:'formatPrice entry',data:{title:product?.title?.substring(0,20),price:product?.price,currency:product?.currency,site:product?.site,originalCurrency:product?.originalCurrency},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     if (!product) {
       return { displayPrice: 'Fiyat bulunamadı', displayCurrency: '' };
     }
