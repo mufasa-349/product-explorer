@@ -282,12 +282,19 @@ async function searchAmazon(query, onLog = null) {
     log(`[AMAZON] Arama başlatılıyor: "${query}"`);
     
     // DEBUG modunda görünür, production'da headless
-    const isDebugMode = process.env.DEBUG === 'true' || process.env.NODE_ENV !== 'production';
+    // Sadece DEBUG=true olduğunda görünür mod
+    const isDebugMode = process.env.DEBUG === 'true';
+    const puppeteerArgs = ['--no-sandbox', '--disable-setuid-sandbox'];
+    
+    // Production'da görsel gereksiz argümanları ekleme
+    if (isDebugMode) {
+      puppeteerArgs.push('--start-maximized');
+    }
     
     browser = await puppeteer.launch({
-      headless: !isDebugMode, // DEBUG modunda görünür, production'da headless
-      slowMo: isDebugMode ? 50 : 10, // Debug modunda daha yavaş
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--start-maximized']
+      headless: !isDebugMode, // Sadece DEBUG=true olduğunda görünür
+      slowMo: isDebugMode ? 50 : 0, // Production'da hızlı, debug'da yavaş
+      args: puppeteerArgs
     });
 
     const page = await browser.newPage();
