@@ -330,6 +330,20 @@ function App() {
         setProgress(data);
       });
 
+      eventSource.addEventListener('partial_results', (event) => {
+        const data = JSON.parse(event.data);
+        setResults(data);
+      });
+
+      eventSource.addEventListener('queue_update', (event) => {
+        const data = JSON.parse(event.data);
+        if (data.position > 0) {
+          setProgress(prev => ({ ...prev, queuePosition: data.position }));
+        } else {
+          setProgress(prev => ({ ...prev, queuePosition: 0 }));
+        }
+      });
+
       eventSource.addEventListener('done', (event) => {
         const data = JSON.parse(event.data);
         setResults(data);
@@ -337,12 +351,13 @@ function App() {
         setSearchStartTime(null);
         setEventSourceRef(null);
         const total = data?.sortedProducts?.length ?? 0;
-        notifySearchDone(total, Date.now() - searchStartedAt);
+        if (total > 0) notifySearchDone(total, Date.now() - searchStartedAt);
         eventSource.close();
       });
 
       eventSource.addEventListener('error', (event) => {
-        setError('Arama sırasında bir hata oluştu');
+        // Hata olsa bile mevcut results state'ini koruyoruz
+        console.error('EventSource hata verdi, ama mevcut sonuçlar korunuyor.');
         setLoading(false);
         setSearchStartTime(null);
         setEventSourceRef(null);
@@ -363,7 +378,8 @@ function App() {
     }
     setLoading(false);
     setSearchStartTime(null);
-    setError('Arama durduruldu');
+    // Sonuçları silmiyoruz, sadece hata mesajı gösteriyoruz (opsiyonel)
+    showToast('Arama durduruldu, mevcut sonuçlar gösteriliyor.');
   };
 
   const formatPrice = (product) => {
@@ -598,6 +614,11 @@ function App() {
               )}
               {progress && (
                 <div className="progress-block">
+                  {progress.queuePosition > 0 && (
+                    <div className="queue-status" style={{ color: '#f39c12', fontWeight: 'bold', marginBottom: '10px' }}>
+                      Sunucu meşgul. Kuyruktaki sıranız: {progress.queuePosition}
+                    </div>
+                  )}
                   <div className="progress-text">
                     {`${progress.visited}/${progress.total} site gezildi, ${progress.products} ürün bulundu`}
                   </div>
@@ -683,63 +704,37 @@ function App() {
         {error && <div className="error-message">{error}</div>}
         {toastVisible && <div className="toast-message">{toastMessage}</div>}
 
-        {results && (
+        {(results || (loading && logs.length > 0)) && (
           <div className="results">
-            <h2 className="results-title">
-              "{results.query}" için {results.sortedProducts.length} sonuç bulundu
-            </h2>
-            {results.imageWarning && (
-              <div className="warning-message">{results.imageWarning}</div>
-            )}
-
-            <div className="site-status">
-              {results.results.map((result, index) => (
-                <div key={index} className="status-item">
-                  <span className="status-site">
-                    {result.site === 'amazon'
-                      ? 'Amazon.com'
-                      : result.site === 'amazon_ae'
-                        ? 'Amazon.ae'
-                        : result.site === 'amazon_de'
-                          ? 'Amazon.de'
-                          : result.site === 'amazon_uk'
-                            ? 'Amazon.co.uk'
-                            : result.site === 'akakce'
-                              ? 'Akakce.com'
-                            : result.site === 'idealo'
-                              ? 'Idealo.de'
-                              : result.site === 'noon'
-                                ? 'Noon.com'
-                                : result.site === 'pricena'
-                                  ? 'Pricena.com'
-                                  : result.site === 'emag'
-                                    ? 'eMAG.bg'
-                                    : result.site === 'pazaruvaj'
-                                      ? 'Pazaruvaj.com'
-                                      : result.site === 'technomarket'
-                                        ? 'Technomarket.bg'
-                                        : result.site === 'technopolis'
-                                          ? 'Technopolis.bg'
-                                          : result.site === 'skroutz'
-                                            ? 'Skroutz.gr'
-                                            : result.site === 'toppreise'
-                                              ? 'Toppreise.ch'
-                                              : result.site === 'digitec'
-                                                ? 'Digitec.ch'
-                                                : getSiteLabel(result.site)}: 
-                  </span>
-                  {result.success ? (
-                    <span className="status-success">
-                      {result.products.length} ürün bulundu
-                    </span>
-                  ) : (
-                    <span className="status-error">
-                      {result.error || 'Siteye erişilemedi'}
-                    </span>
-                  )}
+            {results && (
+              <>
+                <h2 className="results-title">
+                  "{results.query}" için {results.sortedProducts?.length || 0} sonuç bulundu
+                </h2>
+                {results.imageWarning && (
+                  <div className="warning-message">{results.imageWarning}</div>
+                )}
+                
+                <div className="site-status">
+                  {results.results?.map((result, index) => (
+                    <div key={index} className="status-item">
+                      <span className="status-site">
+                        {getSiteLabel(result.site)}: 
+                      </span>
+                      {result.success ? (
+                        <span className="status-success">
+                          {result.products?.length || 0} ürün bulundu
+                        </span>
+                      ) : (
+                        <span className="status-error">
+                          {result.error || 'Siteye erişilemedi'}
+                        </span>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </>
+            )}
 
             {displayedProducts.length > 0 ? (
               <div className="products-list">

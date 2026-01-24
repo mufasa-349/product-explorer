@@ -36,6 +36,33 @@ const CHF_TO_TRY_RATE = parseFloat(process.env.CHF_TO_TRY_RATE) || 53.8;
 const RON_TO_TRY_RATE = parseFloat(process.env.RON_TO_TRY_RATE) || 9.9;
 const MAX_CONCURRENT_SEARCHES = parseInt(process.env.MAX_CONCURRENT_SEARCHES, 10) || 1;
 let activeSearches = 0;
+const searchQueue = [];
+
+// Kuyruğu işleyen fonksiyon
+function processNextInQueue() {
+  if (activeSearches < MAX_CONCURRENT_SEARCHES && searchQueue.length > 0) {
+    const nextSearch = searchQueue.shift();
+    activeSearches++;
+    
+    // Sıradaki kullanıcıya başladığımızı haber ver
+    nextSearch.onStart();
+    
+    // Aramayı çalıştır
+    nextSearch.run().finally(() => {
+      activeSearches--;
+      processNextInQueue(); // Bir sonrakine geç
+    });
+    
+    // Kalanlara sıralarını güncelle
+    updateQueuePositions();
+  }
+}
+
+function updateQueuePositions() {
+  searchQueue.forEach((item, index) => {
+    item.onQueueUpdate(index + 1);
+  });
+}
 
 // CORS ayarları
 app.use(cors({
@@ -141,6 +168,7 @@ async function runSearch(query, sites, options = {}) {
   };
   const onLog = options.onLog || ((message) => logs.push(message));
   const onProgress = options.onProgress || ((data) => Object.assign(progress, data));
+  const onPartialResults = options.onPartialResults || (() => {});
   const emitProgress = (extra = {}) => onProgress({ ...progress, ...extra });
   const SITE_TIMEOUT_MS = 120000; // Amazon ve ağır siteler için süreyi 120 saniyeye çıkardık
 
@@ -228,157 +256,105 @@ async function runSearch(query, sites, options = {}) {
     progress.visited += 1;
     progress.products = results.reduce((sum, result) => sum + (result.products?.length || 0), 0);
     emitProgress({ currentSite: site });
+
+    // Her site sonrası ara sonuçları gönder
+    const partialAllProducts = [];
+    results.forEach(result => {
+      if (result.success && result.products) {
+        result.products.forEach(product => {
+          let normalizedProduct = { ...product };
+          if (product.currency && product.currency.toUpperCase() === 'AED') {
+            const basePrice = parseFloat(product.price);
+            if (!isNaN(basePrice)) {
+              const usdPrice = basePrice * AED_TO_USD_RATE;
+              normalizedProduct = {
+                ...product,
+                price: usdPrice.toFixed(2),
+                currency: 'USD',
+                originalPrice: product.price,
+                originalCurrency: product.currency
+              };
+            }
+          } else if (product.currency && (product.currency.toUpperCase() === 'EUR' || (result.site === 'amazon_uk' && parseFloat(product.price) < 2000))) {
+            const basePrice = parseFloat(product.price);
+            if (!isNaN(basePrice)) {
+              const tryPrice = Math.ceil((basePrice * EUR_TO_TRY_RATE) / 100) * 100;
+              normalizedProduct = {
+                ...product,
+                price: tryPrice.toFixed(0),
+                currency: 'TRY',
+                originalPrice: product.price,
+                originalCurrency: (result.site === 'amazon_uk' && product.currency === 'TRY') ? 'EUR' : product.currency
+              };
+            }
+          } else if (product.currency && product.currency.toUpperCase() === 'CHF') {
+            const basePrice = parseFloat(product.price);
+            if (!isNaN(basePrice)) {
+              const tryPrice = Math.ceil((basePrice * CHF_TO_TRY_RATE) / 100) * 100;
+              normalizedProduct = {
+                ...product,
+                price: tryPrice.toFixed(0),
+                currency: 'TRY',
+                originalPrice: product.price,
+                originalCurrency: product.currency
+              };
+            }
+          } else if (product.currency && product.currency.toUpperCase() === 'RON') {
+            const basePrice = parseFloat(product.price);
+            if (!isNaN(basePrice)) {
+              const tryPrice = Math.ceil((basePrice * RON_TO_TRY_RATE) / 100) * 100;
+              normalizedProduct = {
+                ...product,
+                price: tryPrice.toFixed(0),
+                currency: 'TRY',
+                originalPrice: product.price,
+                originalCurrency: product.currency
+              };
+            }
+          }
+          if (normalizedProduct.currency && normalizedProduct.currency.toUpperCase() === 'USD') {
+            const usdBase = parseFloat(normalizedProduct.price);
+            if (!isNaN(usdBase)) {
+              const tryPrice = Math.ceil((usdBase * USD_TO_TRY_RATE) / 100) * 100;
+              normalizedProduct = {
+                ...normalizedProduct,
+                price: tryPrice.toFixed(0),
+                currency: 'TRY',
+                originalPrice: normalizedProduct.originalPrice || normalizedProduct.price,
+                originalCurrency: normalizedProduct.originalCurrency || 'USD',
+                usdPrice: usdBase.toFixed(2)
+              };
+            }
+          }
+          partialAllProducts.push({
+            ...normalizedProduct,
+            site: result.site
+          });
+        });
+      }
+    });
+
+    onPartialResults({
+      query,
+      results: [...results],
+      sortedProducts: [...partialAllProducts]
+    });
   }
 
-  // Tüm ürünleri birleştir ve fiyatına göre sırala
-  const allProducts = [];
-  results.forEach(result => {
-    if (result.success && result.products) {
-      result.products.forEach(product => {
-        let normalizedProduct = { ...product };
-        if (product.currency && product.currency.toUpperCase() === 'AED') {
-          const basePrice = parseFloat(product.price);
-          if (!isNaN(basePrice)) {
-            const usdPrice = basePrice * AED_TO_USD_RATE;
-            normalizedProduct = {
-              ...product,
-              price: usdPrice.toFixed(2),
-              currency: 'USD',
-              originalPrice: product.price,
-              originalCurrency: product.currency
-            };
-          }
-        } else if (product.currency && (product.currency.toUpperCase() === 'EUR' || (result.site === 'amazon_uk' && parseFloat(product.price) < 2000))) {
-          const basePrice = parseFloat(product.price);
-          if (!isNaN(basePrice)) {
-            // Eğer amazon_uk'den düşük fiyat gelmişse ve TRY denmişse, onu EUR kabul edip çeviriyoruz
-            const tryPrice = Math.ceil((basePrice * EUR_TO_TRY_RATE) / 100) * 100;
-            normalizedProduct = {
-              ...product,
-              price: tryPrice.toFixed(0),
-              currency: 'TRY',
-              originalPrice: product.price,
-              originalCurrency: (result.site === 'amazon_uk' && product.currency === 'TRY') ? 'EUR' : product.currency
-            };
-          }
-        } else if (product.currency && product.currency.toUpperCase() === 'CHF') {
-          const basePrice = parseFloat(product.price);
-          if (!isNaN(basePrice)) {
-            const tryPrice = Math.ceil((basePrice * CHF_TO_TRY_RATE) / 100) * 100;
-            normalizedProduct = {
-              ...product,
-              price: tryPrice.toFixed(0),
-              currency: 'TRY',
-              originalPrice: product.price,
-              originalCurrency: product.currency
-            };
-          }
-        } else if (product.currency && product.currency.toUpperCase() === 'RON') {
-          const basePrice = parseFloat(product.price);
-          if (!isNaN(basePrice)) {
-            const tryPrice = Math.ceil((basePrice * RON_TO_TRY_RATE) / 100) * 100;
-            normalizedProduct = {
-              ...product,
-              price: tryPrice.toFixed(0),
-              currency: 'TRY',
-              originalPrice: product.price,
-              originalCurrency: product.currency
-            };
-          }
-        }
-        if (normalizedProduct.currency && normalizedProduct.currency.toUpperCase() === 'USD') {
-          const usdBase = parseFloat(normalizedProduct.price);
-          if (!isNaN(usdBase)) {
-            const tryPrice = Math.ceil((usdBase * USD_TO_TRY_RATE) / 100) * 100;
-            normalizedProduct = {
-              ...normalizedProduct,
-              price: tryPrice.toFixed(0),
-              currency: 'TRY',
-              originalPrice: normalizedProduct.originalPrice || normalizedProduct.price,
-              originalCurrency: normalizedProduct.originalCurrency || 'USD',
-              usdPrice: usdBase.toFixed(2)
-            };
-          }
-        }
-        allProducts.push({
-          ...normalizedProduct,
-          site: result.site
-        });
-      });
-    }
-  });
-
-  let imageWarning = null;
-  if (options.imageBuffer) {
+  // Tüm siteler bittiğinde resim benzerliğini ekle (isteğe bağlı)
+  if (options.imageBuffer && allProducts.length > 0) {
     try {
       await addImageSimilarity(allProducts, options.imageBuffer);
     } catch (e) {
-      imageWarning = 'Görsel formatı uyumlu değil, sonuçlar etkilenmedi.';
+      // noop
     }
   }
-
-  // Önce görsel benzerliği, sonra marka eşleşmesi, kapasite/ifade eşleşmesi, yakınsa ucuz olan öne gelsin
-  const normalizedQuery = (query || '').toLowerCase().trim().replace(/\s+/g, ' ');
-  const brandToken = normalizedQuery ? normalizedQuery.split(' ')[0] : null;
-  const capacityMatch = normalizedQuery.match(/(\d+)\s*tb/);
-  const capacityToken = capacityMatch ? `${capacityMatch[1]}tb` : null;
-
-  allProducts.sort((a, b) => {
-    const matchA = typeof a.matchPercent === 'number' ? a.matchPercent : 0;
-    const matchB = typeof b.matchPercent === 'number' ? b.matchPercent : 0;
-    const scoreA = typeof a.matchScore === 'number' ? a.matchScore : 0;
-    const scoreB = typeof b.matchScore === 'number' ? b.matchScore : 0;
-    const priceA = parseFloat(a.price) || Infinity;
-    const priceB = parseFloat(b.price) || Infinity;
-
-    const titleA = (a.title || '').toLowerCase().replace(/\s+/g, ' ');
-    const titleB = (b.title || '').toLowerCase().replace(/\s+/g, ' ');
-    const titleANormalized = titleA.replace(/\s+/g, '');
-    const titleBNormalized = titleB.replace(/\s+/g, '');
-
-    const brandMatchA = brandToken ? titleA.startsWith(brandToken) || titleA.includes(`${brandToken} `) : false;
-    const brandMatchB = brandToken ? titleB.startsWith(brandToken) || titleB.includes(`${brandToken} `) : false;
-
-    const exactPhraseA = normalizedQuery && titleA.includes(normalizedQuery);
-    const exactPhraseB = normalizedQuery && titleB.includes(normalizedQuery);
-
-    const capacityMatchA = capacityToken
-      ? (titleANormalized.includes(capacityToken) || titleA.includes(capacityToken.replace('tb', ' tb')))
-      : false;
-    const capacityMatchB = capacityToken
-      ? (titleBNormalized.includes(capacityToken) || titleB.includes(capacityToken.replace('tb', ' tb')))
-      : false;
-
-    const sponsoredA = Boolean(a.isSponsored);
-    const sponsoredB = Boolean(b.isSponsored);
-    const imageScoreA = typeof a.imageSimilarity === 'number' ? a.imageSimilarity : null;
-    const imageScoreB = typeof b.imageSimilarity === 'number' ? b.imageSimilarity : null;
-
-    if (sponsoredA !== sponsoredB) return sponsoredA ? 1 : -1;
-    if (imageScoreA !== null || imageScoreB !== null) {
-      const scoreAVal = imageScoreA ?? -1;
-      const scoreBVal = imageScoreB ?? -1;
-      if (scoreAVal !== scoreBVal) return scoreBVal - scoreAVal;
-    }
-    if (brandMatchA !== brandMatchB) return brandMatchA ? -1 : 1;
-    if (capacityMatchA !== capacityMatchB) return capacityMatchA ? -1 : 1;
-    if (exactPhraseA !== exactPhraseB) return exactPhraseA ? -1 : 1;
-
-    const diff = Math.abs(matchA - matchB);
-    if (diff <= 5 && priceA !== priceB) {
-      return priceA - priceB;
-    }
-
-    if (matchA !== matchB) return matchB - matchA;
-    if (scoreA !== scoreB) return scoreB - scoreA;
-    return priceA - priceB;
-  });
 
   return {
     query,
     results,
     sortedProducts: allProducts,
-    imageWarning,
+    imageWarning: null,
     logs,
     progress
   };
@@ -462,94 +438,66 @@ app.get('/api/search/stream', async (req, res) => {
   res.setHeader('Transfer-Encoding', 'chunked');
   res.flushHeaders();
 
-  activeSearches += 1;
-  let finalized = false;
-  const finalize = () => {
-    if (finalized) return;
-    finalized = true;
-    activeSearches = Math.max(activeSearches - 1, 0);
-  };
-  res.on('close', () => {
-    finalize();
-  });
-
   const sendEvent = (event, data) => {
     try {
       if (res.destroyed) return;
-      
       const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-      
-      // Önce yaz, sonra hemen flush
-      const written = res.write(message);
-      
-      // Log event'leri için özel işlem - hemen flush
-      if (event === 'log') {
-        // Hemen flush yap
-        if (typeof res.flush === 'function') {
-          res.flush();
-        }
-        
-        // Socket seviyesinde flush
-        if (res.socket && res.socket.writable && !res.socket.destroyed) {
-          try {
-            if (typeof res.socket.flush === 'function') {
-              res.socket.flush();
-            }
-          } catch (e) {
-            // Ignore socket flush errors
-          }
-        }
-        
-        // Bir sonraki tick'te de flush dene (garanti için)
-        process.nextTick(() => {
-          if (!res.destroyed && typeof res.flush === 'function') {
-            try {
-              res.flush();
-            } catch (e) {
-              // Ignore flush errors
-            }
-          }
-        });
-      } else {
-        // Diğer event'ler için normal flush
-        if (typeof res.flush === 'function') {
-          res.flush();
-        }
-      }
-      
-      // Backpressure kontrolü
-      if (!written) {
-        res.once('drain', () => {
-          // Buffer boşaldı, tekrar flush yap
-          if (typeof res.flush === 'function') {
-            res.flush();
-          }
-        });
-      }
+      res.write(message);
+      if (typeof res.flush === 'function') res.flush();
     } catch (err) {
-      // Client bağlantısı kapandıysa hata verme
-      if (!res.destroyed) {
-        console.error('Event send error:', err);
-      }
+      if (!res.destroyed) console.error('Event send error:', err);
     }
   };
 
-  try {
-    const imageBuffer = takeImageBuffer(imageToken);
-    const searchResult = await runSearch(query, sites, {
-      onLog: (message) => sendEvent('log', { message }),
-      onProgress: (progress) => sendEvent('progress', progress),
-      imageBuffer
-    });
+  const startSearchTask = async () => {
+    try {
+      const imageBuffer = takeImageBuffer(imageToken);
+      const searchResult = await runSearch(query, sites, {
+        onLog: (message) => sendEvent('log', { message }),
+        onProgress: (progress) => sendEvent('progress', progress),
+        onPartialResults: (results) => sendEvent('partial_results', results),
+        imageBuffer
+      });
 
-    sendEvent('done', searchResult);
-    res.end();
-    finalize();
-  } catch (error) {
-    sendEvent('error', { message: error.message });
-    res.end();
-    finalize();
+      sendEvent('done', searchResult);
+      res.end();
+    } catch (error) {
+      sendEvent('error', { message: error.message });
+      res.end();
+    }
+  };
+
+  if (activeSearches < MAX_CONCURRENT_SEARCHES) {
+    activeSearches += 1;
+    startSearchTask().finally(() => {
+      activeSearches = Math.max(activeSearches - 1, 0);
+      processNextInQueue();
+    });
+  } else {
+    // Kuyruğa ekle
+    const queueItem = {
+      onStart: () => {
+        sendEvent('log', { message: '[SİSTEM] Sıra size geldi, arama başlatılıyor...' });
+        sendEvent('queue_update', { position: 0 });
+      },
+      onQueueUpdate: (pos) => {
+        sendEvent('queue_update', { position: pos });
+        sendEvent('log', { message: `[SİSTEM] Sunucu meşgul. Sıraya alındınız, önünüzde ${pos} kişi var.` });
+      },
+      run: startSearchTask
+    };
+    searchQueue.push(queueItem);
+    queueItem.onQueueUpdate(searchQueue.length);
   }
+
+  res.on('close', () => {
+    // Eğer kullanıcı bağlantıyı keserse kuyruktan çıkar
+    const index = searchQueue.findIndex(item => item.run === startSearchTask);
+    if (index !== -1) {
+      searchQueue.splice(index, 1);
+      updateQueuePositions();
+    }
+  });
 });
 
 app.listen(PORT, () => {
