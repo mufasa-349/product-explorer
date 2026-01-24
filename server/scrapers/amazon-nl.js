@@ -16,18 +16,29 @@ async function searchAmazonNL(query) {
 
     browser = await puppeteer.launch({
       headless: true,
-      slowMo: 10,
+      slowMo: 0,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
     const page = await browser.newPage();
+    
+    // HIZLANDIRMA: Kaynak engelleme
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      if (['image', 'font', 'media'].includes(req.resourceType())) {
+        req.abort();
+      } else {
+        req.continue();
+      }
+    });
+
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
     const searchUrl = `https://www.amazon.nl/s?k=${encodeURIComponent(query)}`;
     console.log(`[AMAZON.NL] Arama sayfasına gidiliyor: ${searchUrl}`);
 
     await page.goto(searchUrl, {
-      waitUntil: 'networkidle2',
+      waitUntil: 'domcontentloaded',
       timeout: 30000
     });
 
@@ -38,7 +49,7 @@ async function searchAmazonNL(query) {
       console.log(`[AMAZON.NL] Ürün elementleri için selector bulunamadı, devam ediliyor...`);
     }
 
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 500)); // 2000 -> 500 ms
 
     console.log(`[AMAZON.NL] Ürün elementleri aranıyor...`);
     const products = await page.evaluate((searchQuery) => {

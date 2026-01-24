@@ -7,11 +7,21 @@ async function searchEbay(query) {
     
     browser = await puppeteer.launch({
       headless: true,
-      //slowMo: 120,
+      slowMo: 0,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
     const page = await browser.newPage();
+    
+    // HIZLANDIRMA: Kaynak engelleme
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      if (['image', 'font', 'media'].includes(req.resourceType())) {
+        req.abort();
+      } else {
+        req.continue();
+      }
+    });
     
     // User-Agent ayarla
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
@@ -21,14 +31,14 @@ async function searchEbay(query) {
     console.log(`[EBAY] Siteye giriliyor: ${searchUrl}`);
     
     await page.goto(searchUrl, { 
-      waitUntil: 'networkidle2',
+      waitUntil: 'domcontentloaded',
       timeout: 30000 
     });
 
     console.log(`[EBAY] Sayfa yüklendi, sonuçlar hazırlanıyor...`);
     
     // Sayfanın yüklenmesini bekle
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 500)); // 2000 -> 500 ms
 
     // Ürünleri çek
     console.log(`[EBAY] Ürün elementleri aranıyor...`);

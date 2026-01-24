@@ -20,23 +20,34 @@ async function searchTrovaprezzi(query) {
     console.log(`[TROVAPREZZI] Arama baslatiliyor: "${query}"`);
 
     browser = await puppeteer.launch({
-      headless: false,
-      slowMo: 10,
+      headless: true,
+      slowMo: 0,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
     const page = await browser.newPage();
+    
+    // HIZLANDIRMA: Kaynak engelleme
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      if (['image', 'font', 'media'].includes(req.resourceType())) {
+        req.abort();
+      } else {
+        req.continue();
+      }
+    });
+
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
     const searchUrl = `https://www.trovaprezzi.it/hard-disk-esterni/prezzi-scheda-prodotto/${encodeURIComponent(query)}`;
     console.log(`[TROVAPREZZI] Arama sayfasina gidiliyor: ${searchUrl}`);
 
     await page.goto(searchUrl, {
-      waitUntil: 'networkidle2',
+      waitUntil: 'domcontentloaded',
       timeout: 30000
     });
 
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 500)); // 2000 -> 500 ms
 
     console.log('[TROVAPREZZI] Urun elementleri aranıyor...');
     const products = await page.evaluate((searchQuery) => {

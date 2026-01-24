@@ -26,7 +26,7 @@ async function setDeliveryZip(page, zip, onLog = null) {
   while (retryCount < maxRetries) {
     try {
       log(`[AMAZON] Delivery address butonu aranıyor (Deneme ${retryCount + 1}/${maxRetries})...`);
-      await new Promise(resolve => setTimeout(resolve, 2500));
+      await new Promise(resolve => setTimeout(resolve, 800)); // 2500 -> 800 ms
       
       let clicked = false;
       
@@ -164,15 +164,26 @@ async function searchAmazon(query, onLog = null) {
     }
     
     browser = await puppeteer.launch({
-      headless: !isDebugMode, // Sadece DEBUG=true olduğunda görünür
-      slowMo: isDebugMode ? 50 : 0, // Production'da hızlı, debug'da yavaş
+      headless: !isDebugMode,
+      slowMo: 0, // Production'da tamamen kapatıldı
       args: puppeteerArgs
     });
 
     const page = await browser.newPage();
     
-    // Sayfa boyutunu ayarla (tam ekran görünüm için)
-    await page.setViewport({ width: 1920, height: 1080 });
+    // HIZLANDIRMA: Gereksiz kaynakları engelle
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      const resourceType = req.resourceType();
+      if (['image', 'font', 'media', 'stylesheet'].includes(resourceType)) {
+        req.abort();
+      } else {
+        req.continue();
+      }
+    });
+    
+    // Sayfa boyutunu küçült (daha az veri)
+    await page.setViewport({ width: 1280, height: 800 });
     
     // User-Agent ayarla (bot olarak algılanmamak için)
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');

@@ -7,21 +7,33 @@ async function searchSkroutz(query) {
 
     browser = await puppeteer.launch({
       headless: true,
+      slowMo: 0,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
     const page = await browser.newPage();
+    
+    // HIZLANDIRMA: Kaynak engelleme
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      if (['image', 'font', 'media'].includes(req.resourceType())) {
+        req.abort();
+      } else {
+        req.continue();
+      }
+    });
+
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-    const searchUrl = `https://www.skroutz.gr/c/87/eksoterikoi-sklhroi-diskoi/m/28/Samsung.html?keyphrase=${encodeURIComponent(query)}`;
+    const searchUrl = `https://www.skroutz.gr/search?keyphrase=${encodeURIComponent(query)}`;
     console.log(`[SKROUTZ] Arama sayfasına gidiliyor: ${searchUrl}`);
 
     await page.goto(searchUrl, {
-      waitUntil: 'networkidle2',
+      waitUntil: 'domcontentloaded',
       timeout: 30000
     });
 
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 500)); // 2000 -> 500 ms
 
     console.log(`[SKROUTZ] Ürün elementleri aranıyor...`);
     const products = await page.evaluate((searchQuery) => {
